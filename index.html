@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Астрокартография</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --gold:#c9a84c;--gold-light:#e8c97a;--deep:#05070f;--surface:#0c1220;
+  --surface2:#111827;--purple:#7c3aed;--purple-light:#a78bfa;
+  --text:#e8e4f0;--text-muted:#8899bb;--border:#1e2d4a;
+}
+html,body{min-height:100%;background:var(--deep);color:var(--text);font-family:'Raleway',sans-serif;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(1px 1px at 10% 8%,rgba(255,255,255,.8) 0%,transparent 100%),
+  radial-gradient(1px 1px at 25% 15%,rgba(255,255,255,.6) 0%,transparent 100%),
+  radial-gradient(1px 1px at 42% 5%,rgba(255,255,255,.9) 0%,transparent 100%),
+  radial-gradient(1px 1px at 58% 12%,rgba(255,255,255,.7) 0%,transparent 100%),
+  radial-gradient(1px 1px at 74% 6%,rgba(255,255,255,.8) 0%,transparent 100%),
+  radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,.6) 0%,transparent 100%),
+  radial-gradient(1px 1px at 15% 35%,rgba(255,255,255,.5) 0%,transparent 100%),
+  radial-gradient(1px 1px at 35% 28%,rgba(255,255,255,.7) 0%,transparent 100%),
+  radial-gradient(1px 1px at 65% 32%,rgba(255,255,255,.6) 0%,transparent 100%),
+  radial-gradient(2px 2px at 20% 22%,rgba(200,180,255,.6) 0%,transparent 100%),
+  radial-gradient(2px 2px at 70% 28%,rgba(255,220,150,.5) 0%,transparent 100%);
+  pointer-events:none;z-index:0}
+
+.app{min-height:100vh;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:16px 14px 50px}
+
+.header{text-align:center;margin-bottom:24px;padding-top:10px}
+.header-star{font-size:24px;margin-bottom:6px;display:block;animation:pulse 3s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+.header h1{font-family:'Cinzel',serif;font-size:20px;font-weight:700;color:var(--gold);letter-spacing:2px}
+.header p{font-size:11px;color:var(--text-muted);margin-top:5px;letter-spacing:1px;text-transform:uppercase}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:440px;margin-bottom:16px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;font-weight:600}
+.field input,.field select{width:100%;background:#0a1120;border:1px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--text);font-family:'Raleway',sans-serif;font-size:15px;outline:none;transition:border-color .3s;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.1)}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238899bb' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px}
+.field select option{background:#0c1220}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.btn{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8860b,var(--gold),#b8860b);color:#05070f;font-family:'Cinzel',serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .3s}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(201,168,76,.3)}
+.btn.loading{opacity:.8;pointer-events:none}
+.btn-text{display:inline}
+.spinner{display:none;width:14px;height:14px;border:2px solid #05070f;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin-left:8px;vertical-align:middle}
+.btn.loading .spinner{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* RESULT */
+.result{display:none;width:100%;max-width:440px}
+.result.show{display:block}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:9px 6px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text-muted);font-family:'Raleway',sans-serif;font-size:11px;cursor:pointer;transition:all .25s;text-align:center;letter-spacing:.5px}
+.tab.active{background:var(--surface);border-color:var(--gold);color:var(--gold)}
+
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* Map */
+.map-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px;position:relative}
+.map-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--purple-light),transparent);z-index:2}
+#astroMap{width:100%;display:block}
+.map-legend{padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted)}
+.leg-dot{width:8px;height:3px;border-radius:2px}
+
+/* Planet cards */
+.section-title{font-family:'Cinzel',serif;font-size:12px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;text-align:center}
+.planet-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.planet-header{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer}
+.planet-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.planet-name{font-family:'Cinzel',serif;font-size:13px;color:var(--text);flex:1}
+.planet-zone-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600;letter-spacing:.5px}
+.chevron{font-size:12px;color:var(--text-muted);transition:transform .25s}
+.planet-card.open .chevron{transform:rotate(180deg)}
+.planet-body{display:none;padding:0 14px 14px}
+.planet-card.open .planet-body{display:block}
+.planet-desc{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:10px}
+.planet-meaning{font-size:12px;line-height:1.6;margin-bottom:10px;padding:10px;background:#0a1120;border-radius:8px;border-left:3px solid}
+.cities-title{font-size:10px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.cities-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.city-chip{background:#0a1120;border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;text-align:center}
+.city-name{color:var(--text);font-weight:500}
+.city-country{color:var(--text-muted);font-size:10px}
+
+/* Top-10 */
+.top-list{display:flex;flex-direction:column;gap:8px}
+.top-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:12px}
+.top-num{font-family:'Cinzel',serif;font-size:18px;color:var(--border);font-weight:700;width:28px;text-align:center;flex-shrink:0}
+.top-num.gold{color:var(--gold)}
+.top-num.silver{color:#94a3b8}
+.top-num.bronze{color:#c97c4c}
+.top-info{flex:1}
+.top-city{font-size:14px;color:var(--text);font-weight:600}
+.top-country{font-size:11px;color:var(--text-muted);margin-top:1px}
+.top-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.top-tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500}
+.top-score{font-family:'Cinzel',serif;font-size:16px;font-weight:700;flex-shrink:0}
+
+.reset-btn{width:100%;padding:11px;border:1px solid var(--border);border-radius:11px;background:transparent;color:var(--text-muted);font-family:'Raleway',sans-serif;font-size:12px;cursor:pointer;margin-top:12px;transition:all .3s;letter-spacing:1px}
+.reset-btn:hover{border-color:var(--gold);color:var(--gold)}
+.disclaimer{font-size:10px;color:#374151;text-align:center;margin-top:16px;line-height:1.6;padding:0 8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span class="header-star">✦</span>
+    <h1>АСТРОКАРТОГРАФИЯ</h1>
+    <p>Карта релокации по дате рождения</p>
+  </div>
+
+  <div class="card" id="formCard">
+    <div class="field">
+      <label>Дата рождения</label>
+      <input type="date" id="birthDate" max="2008-01-01"/>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Час рождения</label>
+        <select id="birthHour"><option value="">-- час --</option></select>
+      </div>
+      <div class="field">
+        <label>Минуты</label>
+        <select id="birthMin"><option value="">-- мин --</option></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Место рождения</label>
+      <select id="birthCity">
+        <option value="">-- выберите город --</option>
+        <option value="55.75,37.62,3">Москва, Россия</option>
+        <option value="59.93,30.32,3">Санкт-Петербург, Россия</option>
+        <option value="51.18,71.45,6">Астана, Казахстан</option>
+        <option value="43.26,76.95,6">Алматы, Казахстан</option>
+        <option value="41.30,69.24,5">Ташкент, Узбекистан</option>
+        <option value="40.41,49.87,4">Баку, Азербайджан</option>
+        <option value="41.69,44.83,4">Тбилиси, Грузия</option>
+        <option value="40.18,44.51,4">Ереван, Армения</option>
+        <option value="47.00,28.85,2">Кишинёв, Молдова</option>
+        <option value="50.45,30.52,2">Киев, Украина</option>
+        <option value="53.90,27.57,3">Минск, Беларусь</option>
+        <option value="48.86,2.35,1">Париж, Франция</option>
+        <option value="51.50,-0.12,0">Лондон, Великобритания</option>
+        <option value="52.52,13.40,1">Берлин, Германия</option>
+        <option value="40.71,-74.00,-5">Нью-Йорк, США</option>
+        <option value="34.05,-118.24,-8">Лос-Анджелес, США</option>
+        <option value="25.20,55.27,4">Дубай, ОАЭ</option>
+        <option value="1.35,103.82,8">Сингапур</option>
+        <option value="-33.86,151.21,10">Сидней, Австралия</option>
+        <option value="35.68,139.69,9">Токио, Япония</option>
+      </select>
+    </div>
+    <button class="btn" id="calcBtn" onclick="calculate()">
+      <span class="btn-text">✦ Построить карту</span>
+      <span class="spinner"></span>
+    </button>
+  </div>
+
+  <div class="result" id="result">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('map')">🗺 Карта</button>
+      <button class="tab" onclick="switchTab('planets')">🪐 Планеты</button>
+      <button class="tab" onclick="switchTab('top')">🏆 Топ-10</button>
+    </div>
+
+    <!-- MAP TAB -->
+    <div class="tab-content active" id="tab-map">
+      <div class="map-wrap">
+        <canvas id="astroMap"></canvas>
+        <div class="map-legend" id="mapLegend"></div>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:14px">Нажми на планету во вкладке «Планеты» чтобы увидеть города</p>
+    </div>
+
+    <!-- PLANETS TAB -->
+    <div class="tab-content" id="tab-planets">
+      <p class="section-title">✦ Планетарные линии ✦</p>
+      <div id="planetList"></div>
+    </div>
+
+    <!-- TOP-10 TAB -->
+    <div class="tab-content" id="tab-top">
+      <p class="section-title">✦ Лучшие города для тебя ✦</p>
+      <div class="top-list" id="topList"></div>
+    </div>
+
+    <button class="reset-btn" onclick="reset()">← Новый расчёт</button>
+    <p class="disclaimer">Астрокартография — инструмент самопознания. Результаты носят рекомендательный характер.</p>
+  </div>
+</div>
+
+<script>
+if(window.Telegram&&window.Telegram.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();}
+
+// Fill selects
+const hourSel=document.getElementById('birthHour');
+const minSel=document.getElementById('birthMin');
+for(let h=0;h<24;h++){const o=document.createElement('option');o.value=h;o.textContent=String(h).padStart(2,'0')+':00';hourSel.appendChild(o);}
+for(let m=0;m<60;m+=5){const o=document.createElement('option');o.value=m;o.textContent=String(m).padStart(2,'0');minSel.appendChild(o);}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',['map','planets','top'][i]===name)});
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+const PLANETS=[
+  {name:'Солнце',color:'#fbbf24',
+   desc:'Линия Солнца показывает места, где ты наиболее ярко проявляешь свою личность и жизненную силу.',
+   meanings:{AC:'На Асценденте Солнца ты становишься заметной личностью. Люди видят в тебе лидера, ты легко притягиваешь внимание и получаешь признание.',MC:'На MC Солнца — идеальное место для карьеры и публичности. Твой профессионализм замечают, возможны выход на новую аудиторию и рост статуса.',DC:'На DC Солнца ты встречаешь значимых партнёров — как в бизнесе, так и в личной жизни. Отношения здесь яркие и судьбоносные.',IC:'На IC Солнца ты чувствуешь глубокую связь с местом, ощущение «это мой дом». Место для возвращения к себе.'},
+   cities:['Мадрид','Барселона','Рим','Афины','Лиссабон','Каир','Найроби','Бангкок','Куала-Лумпур','Мельбурн'],
+   zone:'AC'},
+  {name:'Луна',color:'#c4b5fd',
+   desc:'Линия Луны связана с эмоциональным комфортом, ощущением дома и внутренней безопасностью.',
+   meanings:{AC:'На Асценденте Луны ты чувствуешь себя эмоционально открытым и принятым. Местные жители кажутся «своими» с первых дней.',MC:'На MC Луны — карьера в сферах заботы, питания, психологии, недвижимости. Интуиция усиливается.',DC:'На DC Луны — эмоциональные, глубокие отношения. Партнёры здесь нуждаются в тебе и питают тебя.',IC:'На IC Луны — самое домашнее место на Земле для тебя. Ощущение укоренённости и покоя.'},
+   cities:['Амстердам','Вена','Прага','Варшава','Будапешт','Копенгаген','Эдинбург','Монреаль','Ванкувер','Окленд'],
+   zone:'DC'},
+  {name:'Венера',color:'#f472b6',
+   desc:'Линия Венеры — зона любви, красоты, творчества и финансового притяжения.',
+   meanings:{AC:'На Асценденте Венеры ты выглядишь привлекательно и притягиваешь симпатии. Легко заводишь знакомства, расцветает творчество.',MC:'На MC Венеры — успех в творческих, художественных, модных сферах. Возможны публичное признание и монетизация таланта.',DC:'На DC Венеры — место романтических встреч и гармоничных партнёрств. Возможна встреча с партнёром жизни.',IC:'На IC Венеры — уютный дом, красивый быт. Место для наслаждения жизнью в полной мере.'},
+   cities:['Париж','Флоренция','Венеция','Прага','Лиссабон','Буэнос-Айрес','Бали','Сеул','Токио','Ницца'],
+   zone:'MC'},
+  {name:'Марс',color:'#fb923c',
+   desc:'Линия Марса — зона действия, энергии, конкуренции и смелых решений.',
+   meanings:{AC:'На Асценденте Марса ты полон энергии и решимости. Место для спорта, стартапов, любых активных начинаний.',MC:'На MC Марса — карьерный взлёт через напор и конкуренцию. Подходит для бизнеса, военной сферы, хирургии, спорта.',DC:'На DC Марса — интенсивные, страстные отношения. Возможны конфликты, но и сильное притяжение.',IC:'На IC Марса — место где ты отстаиваешь своё пространство. Потребность в независимости дома.'},
+   cities:['Нью-Йорк','Чикаго','Дубай','Сингапур','Шанхай','Сеул','Тель-Авив','Варшава','Берлин','Торонто'],
+   zone:'IC'},
+  {name:'Юпитер',color:'#34d399',
+   desc:'Линия Юпитера — зона удачи, роста, изобилия и расширения горизонтов.',
+   meanings:{AC:'На Асценденте Юпитера жизнь кажется щедрой. Везёт в знакомствах, возникают неожиданные возможности, ты выглядишь успешным.',MC:'На MC Юпитера — лучшее место для карьерного роста и финансового успеха. Возможны повышения, признание, большие проекты.',DC:'На DC Юпитера — щедрые, оптимистичные партнёры. Бизнес-союзы приносят плоды.',IC:'На IC Юпитера — место изобилия и комфорта. Хорошая недвижимость, ощущение «мне здесь везёт».'},
+   cities:['Лондон','Цюрих','Стокгольм','Мюнхен','Дублин','Мельбурн','Окленд','Торонто','Ванкувер','Женева'],
+   zone:'AC'},
+  {name:'Сатурн',color:'#94a3b8',
+   desc:'Линия Сатурна — зона дисциплины, структуры и долгосрочных достижений.',
+   meanings:{AC:'На Асценденте Сатурна ты воспринимаешься серьёзно и авторитетно. Место для долгосрочных планов, но требует усилий.',MC:'На MC Сатурна — медленный, но устойчивый карьерный рост. Место для создания чего-то долговечного.',DC:'На DC Сатурна — серьёзные, ответственные партнёры. Отношения требуют работы, но прочны.',IC:'На IC Сатурна — место строгой дисциплины дома. Подходит для уединённой работы над собой.'},
+   cities:['Цюрих','Вена','Стокгольм','Хельсинки','Осло','Токио','Сеул','Сингапур','Бостон','Эдинбург'],
+   zone:'DC'},
+];
+
+const ALL_CITIES=[
+  {city:'Лиссабон',country:'Португалия',tags:['Венера AC','Юпитер MC'],colors:['#f472b6','#34d399'],score:94},
+  {city:'Бали',country:'Индонезия',tags:['Венера IC','Луна AC'],colors:['#f472b6','#c4b5fd'],score:91},
+  {city:'Барселона',country:'Испания',tags:['Солнце AC','Марс MC'],colors:['#fbbf24','#fb923c'],score:89},
+  {city:'Токио',country:'Япония',tags:['Юпитер DC','Венера MC'],colors:['#34d399','#f472b6'],score:87},
+  {city:'Берлин',country:'Германия',tags:['Марс AC','Сатурн MC'],colors:['#fb923c','#94a3b8'],score:85},
+  {city:'Сингапур',country:'Сингапур',tags:['Марс MC','Юпитер AC'],colors:['#fb923c','#34d399'],score:83},
+  {city:'Буэнос-Айрес',country:'Аргентина',tags:['Венера AC','Луна MC'],colors:['#f472b6','#c4b5fd'],score:81},
+  {city:'Амстердам',country:'Нидерланды',tags:['Луна DC','Юпитер IC'],colors:['#c4b5fd','#34d399'],score:79},
+  {city:'Дубай',country:'ОАЭ',tags:['Марс AC','Солнце MC'],colors:['#fb923c','#fbbf24'],score:77},
+  {city:'Прага',country:'Чехия',tags:['Луна AC','Венера DC'],colors:['#c4b5fd','#f472b6'],score:75},
+];
+
+function toRad(d){return d*Math.PI/180}
+function toDeg(r){return r*180/Math.PI}
+
+function julianDay(y,m,d,h){
+  if(m<=2){y--;m+=12;}
+  const A=Math.floor(y/100),B=2-A+Math.floor(A/4);
+  return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+h/24+B-1524.5;
+}
+function siderealTime(jd,lng){
+  const T=(jd-2451545)/36525;
+  let g=280.46061837+360.98564736629*(jd-2451545)+.000387933*T*T;
+  return ((g+lng)%360+360)%360;
+}
+function planetLon(name,jd){
+  const T=(jd-2451545)/36525;
+  const base={Солнце:280.466+36000.770*T,Луна:218.316+481267.881*T,Венера:181.979+58517.816*T,Марс:355.433+19140.300*T,Юпитер:34.351+3034.906*T,Сатурн:50.077+1222.114*T};
+  return ((base[name]%360)+360)%360;
+}
+
+let globalPlanetData=[];
+
+function calculate(){
+  const dv=document.getElementById('birthDate').value;
+  const hv=document.getElementById('birthHour').value;
+  const mv=document.getElementById('birthMin').value;
+  const cv=document.getElementById('birthCity').value;
+  if(!dv||hv===''||!cv){alert('Заполните все поля');return;}
+  const btn=document.getElementById('calcBtn');
+  btn.classList.add('loading');
+  setTimeout(()=>{
+    const [y,m,d]=dv.split('-').map(Number);
+    const parts=cv.split(',');
+    const lat=parseFloat(parts[0]),lng=parseFloat(parts[1]),tz=parseFloat(parts[2]);
+    const h=Number(hv)+Number(mv||0)/60-tz;
+    const jd=julianDay(y,m,d,h);
+    const lst=siderealTime(jd,lng);
+    globalPlanetData=PLANETS.map((p,i)=>{
+      const lon=planetLon(p.name,jd);
+      const mcLng=((lon-lst+540)%360)-180;
+      const acLng=(mcLng+90+360)%360; if(acLng>180) acLng-=360;
+      const dcLng=(mcLng-90+360)%360;
+      return {...p,mcLng,acLng:((mcLng+90+360)%360+180)%360-180,dcLng:((mcLng-90+360)%360+180)%360-180,icLng:((mcLng+180+360)%360+180)%360-180,lon};
+    });
+    drawMap(globalPlanetData);
+    drawPlanets(globalPlanetData);
+    drawTop();
+    document.getElementById('formCard').style.display='none';
+    document.getElementById('result').classList.add('show');
+    btn.classList.remove('loading');
+  },1000);
+}
+
+function drawMap(pd){
+  const canvas=document.getElementById('astroMap');
+  const W=canvas.offsetWidth||360;
+  const H=Math.round(W*0.55);
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+
+  // Ocean
+  ctx.fillStyle='#0d1f3c';ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='rgba(30,60,100,0.4)';ctx.lineWidth=0.4;
+  for(let x=0;x<=W;x+=W/6){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<=H;y+=H/3){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // Continents
+  ctx.fillStyle='#162d52';ctx.strokeStyle='#243d6a';ctx.lineWidth=0.8;
+  const C=[
+    [[.08,.3],[.14,.26],[.22,.24],[.26,.28],[.27,.42],[.23,.52],[.18,.56],[.13,.54],[.09,.46]],
+    [[.19,.58],[.25,.54],[.28,.6],[.28,.75],[.23,.83],[.18,.82],[.15,.74],[.17,.63]],
+    [[.43,.25],[.50,.22],[.56,.24],[.56,.34],[.50,.38],[.43,.35]],
+    [[.44,.4],[.52,.37],[.58,.42],[.58,.6],[.52,.72],[.45,.7],[.40,.6],[.39,.48]],
+    [[.55,.22],[.68,.2],[.80,.22],[.87,.28],[.85,.42],[.76,.46],[.63,.46],[.55,.38],[.53,.28]],
+    [[.76,.58],[.87,.55],[.91,.62],[.90,.73],[.82,.77],[.74,.72],[.73,.63]],
+  ];
+  C.forEach(pts=>{ctx.beginPath();ctx.moveTo(pts[0][0]*W,pts[0][1]*H);pts.slice(1).forEach(p=>ctx.lineTo(p[0]*W,p[1]*H));ctx.closePath();ctx.fill();ctx.stroke();});
+
+  // Equator
+  ctx.strokeStyle='rgba(100,140,200,0.25)';ctx.lineWidth=0.6;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();ctx.setLineDash([]);
+
+  // Planet lines
+  pd.forEach(p=>{
+    const mcX=((p.mcLng+180)/360)*W;
+    ctx.save();ctx.strokeStyle=p.color;ctx.lineWidth=1.8;ctx.globalAlpha=.85;
+    ctx.beginPath();
+    for(let y2=0;y2<=H;y2+=2){const lat=90-(y2/H)*180;const x=mcX+Math.sin(toRad(lat*.9))*18;if(y2===0)ctx.moveTo(x,y2);else ctx.lineTo(x,y2);}
+    ctx.stroke();
+    // AC dashed
+    const acX=((p.acLng+180)/360)*W;
+    ctx.globalAlpha=.45;ctx.setLineDash([4,3]);ctx.lineWidth=1.2;
+    ctx.beginPath();
+    for(let y2=0;y2<=H;y2+=2){const lat=90-(y2/H)*180;const x=acX+Math.cos(toRad(lat*.9))*14;if(y2===0)ctx.moveTo(x,y2);else ctx.lineTo(x,y2);}
+    ctx.stroke();ctx.restore();
+  });
+
+  // Legend
+  const legend=document.getElementById('mapLegend');
+  legend.innerHTML='';
+  pd.forEach(p=>{
+    const el=document.createElement('div');
+    el.className='leg-item';
+    el.innerHTML=`<div class="leg-dot" style="background:${p.color}"></div><span>${p.name}</span>`;
+    legend.appendChild(el);
+  });
+}
+
+function drawPlanets(pd){
+  const list=document.getElementById('planetList');
+  list.innerHTML='';
+  const zones=['AC','MC','DC','IC'];
+  pd.forEach((p,i)=>{
+    const zone=zones[i%4];
+    const meaning=p.meanings[zone]||p.desc;
+    const card=document.createElement('div');
+    card.className='planet-card';
+    const citiesHtml=p.cities.slice(0,8).map(c=>`<div class="city-chip"><div class="city-name">${c}</div></div>`).join('');
+    card.innerHTML=`
+      <div class="planet-header" onclick="toggleCard(this)">
+        <div class="planet-dot" style="background:${p.color}"></div>
+        <div class="planet-name">${p.name}</div>
+        <div class="planet-zone-badge" style="background:${p.color}22;color:${p.color};border:1px solid ${p.color}44">${zone}</div>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="planet-body">
+        <p class="planet-desc">${p.desc}</p>
+        <div class="planet-meaning" style="border-color:${p.color}66;color:${p.color}cc">${meaning}</div>
+        <div class="cities-title">🌍 Города на линии ${p.name}</div>
+        <div class="cities-grid">${citiesHtml}</div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function toggleCard(header){
+  const card=header.parentElement;
+  card.classList.toggle('open');
+}
+
+function drawTop(){
+  const list=document.getElementById('topList');
+  list.innerHTML='';
+  ALL_CITIES.forEach((c,i)=>{
+    const numClass=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const tagsHtml=c.tags.map((t,j)=>`<span class="top-tag" style="background:${c.colors[j]}22;color:${c.colors[j]}">${t}</span>`).join('');
+    const item=document.createElement('div');
+    item.className='top-item';
+    item.innerHTML=`
+      <div class="top-num ${numClass}">${i+1}</div>
+      <div class="top-info">
+        <div class="top-city">${c.city}</div>
+        <div class="top-country">${c.country}</div>
+        <div class="top-tags">${tagsHtml}</div>
+      </div>
+      <div class="top-score" style="color:var(--gold)">${c.score}</div>`;
+    list.appendChild(item);
+  });
+}
+
+function reset(){
+  document.getElementById('formCard').style.display='block';
+  document.getElementById('result').classList.remove('show');
+  switchTab('map');
+}
+</script>
+</body>
+</html>
