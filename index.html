@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Астрокартография</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#c9a84c;--deep:#05070f;--surface:#0c1220;--text:#e8e4f0;--text-muted:#8899bb;--border:#1e2d4a;--purple:#7c3aed;}
+html,body{min-height:100%;background:var(--deep);color:var(--text);font-family:'Raleway',sans-serif;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(1px 1px at 10% 8%,rgba(255,255,255,.8) 0%,transparent 100%),
+  radial-gradient(1px 1px at 25% 15%,rgba(255,255,255,.6) 0%,transparent 100%),
+  radial-gradient(1px 1px at 42% 5%,rgba(255,255,255,.9) 0%,transparent 100%),
+  radial-gradient(1px 1px at 58% 12%,rgba(255,255,255,.7) 0%,transparent 100%),
+  radial-gradient(2px 2px at 20% 22%,rgba(200,180,255,.5) 0%,transparent 100%),
+  radial-gradient(2px 2px at 70% 28%,rgba(255,220,150,.4) 0%,transparent 100%);
+  pointer-events:none;z-index:0}
+.app{min-height:100vh;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:16px 14px 50px}
+.header{text-align:center;margin-bottom:24px;padding-top:10px}
+.header-star{font-size:24px;margin-bottom:6px;display:block;animation:pulse 3s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+.header h1{font-family:'Cinzel',serif;font-size:20px;font-weight:700;color:var(--gold);letter-spacing:2px}
+.header p{font-size:11px;color:var(--text-muted);margin-top:5px;letter-spacing:1px;text-transform:uppercase}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:440px;margin-bottom:16px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;font-weight:600}
+.field input,.field select{width:100%;background:#0a1120;border:1px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--text);font-family:'Raleway',sans-serif;font-size:15px;outline:none;transition:border-color .3s;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus{border-color:var(--gold)}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238899bb' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px}
+.field select option{background:#0c1220}
+.field select optgroup{background:#0c1220;color:var(--gold);font-size:11px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8860b,var(--gold),#b8860b);color:#05070f;font-family:'Cinzel',serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .3s}
+.btn:active{transform:scale(0.98)}
+.result{display:none;width:100%;max-width:440px}
+.result.show{display:block}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:9px 4px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text-muted);font-family:'Raleway',sans-serif;font-size:11px;cursor:pointer;transition:all .25s;text-align:center}
+.tab.active{background:var(--surface);border-color:var(--gold);color:var(--gold)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.map-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px}
+#astroMap{width:100%;display:block}
+.map-legend{padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted)}
+.leg-line{width:16px;height:2px;border-radius:2px}
+.section-title{font-family:'Cinzel',serif;font-size:12px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;text-align:center}
+.planet-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.planet-header{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none}
+.planet-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.planet-name-text{font-family:'Cinzel',serif;font-size:13px;color:var(--text);flex:1}
+.zone-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600}
+.chevron{font-size:11px;color:var(--text-muted);transition:transform .25s;margin-left:4px}
+.planet-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border)}
+.planet-body.open{display:block}
+.planet-desc-text{font-size:13px;color:var(--text-muted);line-height:1.6;margin:12px 0 10px}
+.meaning-box{font-size:12px;line-height:1.6;margin-bottom:12px;padding:10px 12px;background:#0a1120;border-radius:8px;border-left:3px solid}
+.cities-label{font-size:10px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.cities-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.city-chip{background:#0a1120;border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);text-align:center}
+.top-list{display:flex;flex-direction:column;gap:8px}
+.top-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:12px}
+.top-num{font-family:'Cinzel',serif;font-size:18px;color:var(--border);font-weight:700;width:28px;text-align:center;flex-shrink:0}
+.n1{color:var(--gold)}.n2{color:#94a3b8}.n3{color:#c97c4c}
+.top-info{flex:1}
+.top-city-name{font-size:14px;color:var(--text);font-weight:600}
+.top-country-name{font-size:11px;color:var(--text-muted);margin-top:1px}
+.top-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.top-tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500}
+.top-score{font-family:'Cinzel',serif;font-size:16px;font-weight:700;color:var(--gold);flex-shrink:0}
+
+/* AI Analysis button */
+.ai-btn{width:100%;padding:16px;border:none;border-radius:14px;background:linear-gradient(135deg,#4c1d95,#7c3aed,#4c1d95);color:#fff;font-family:'Cinzel',serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .3s;margin-top:8px}
+.ai-btn:active{transform:scale(0.98)}
+.ai-btn:disabled{opacity:.6;cursor:not-allowed}
+.ai-btn-inner{display:flex;align-items:center;justify-content:center;gap:10px}
+.ai-sub{font-size:10px;opacity:.8;font-family:'Raleway',sans-serif;display:block;margin-top:4px;letter-spacing:.5px}
+
+/* Analysis result */
+.analysis-wrap{background:var(--surface);border:1px solid #4c1d95;border-radius:16px;padding:20px;margin-top:14px;position:relative;overflow:hidden}
+.analysis-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#a78bfa,transparent)}
+.analysis-title{font-family:'Cinzel',serif;font-size:14px;color:#a78bfa;letter-spacing:1px;margin-bottom:14px;text-align:center}
+.analysis-text{font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap}
+.analysis-loading{text-align:center;padding:30px 0}
+.loading-stars{font-size:24px;animation:pulse 1s ease-in-out infinite}
+.loading-text{font-size:13px;color:var(--text-muted);margin-top:10px}
+
+.reset-btn{width:100%;padding:11px;border:1px solid var(--border);border-radius:11px;background:transparent;color:var(--text-muted);font-family:'Raleway',sans-serif;font-size:12px;cursor:pointer;margin-top:12px;transition:all .3s;letter-spacing:1px}
+.reset-btn:hover{border-color:var(--gold);color:var(--gold)}
+.disclaimer{font-size:10px;color:#374151;text-align:center;margin-top:16px;line-height:1.6;padding:0 8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span class="header-star">✦</span>
+    <h1>АСТРОКАРТОГРАФИЯ</h1>
+    <p>Карта релокации по дате рождения</p>
+  </div>
+
+  <div class="card" id="formCard">
+    <div class="field">
+      <label>Дата рождения</label>
+      <input type="date" id="birthDate" max="2008-01-01"/>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Час рождения</label>
+        <select id="birthHour"><option value="">-- час --</option></select>
+      </div>
+      <div class="field">
+        <label>Минуты</label>
+        <select id="birthMin"><option value="">-- мин --</option></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Место рождения</label>
+      <select id="birthCity">
+        <option value="">-- выберите город --</option>
+        <optgroup label="🇷🇺 Россия">
+          <option value="55.75,37.62,3">Москва</option>
+          <option value="59.93,30.32,3">Санкт-Петербург</option>
+          <option value="56.83,60.60,5">Екатеринбург</option>
+          <option value="55.00,82.93,7">Новосибирск</option>
+          <option value="53.20,50.15,4">Самара</option>
+          <option value="51.53,46.03,3">Саратов</option>
+          <option value="56.31,43.99,3">Нижний Новгород</option>
+          <option value="55.79,49.12,3">Казань</option>
+          <option value="54.73,55.96,5">Уфа</option>
+          <option value="56.01,92.87,7">Красноярск</option>
+          <option value="52.29,104.30,8">Иркутск</option>
+          <option value="43.12,131.90,10">Владивосток</option>
+          <option value="47.23,39.72,3">Ростов-на-Дону</option>
+          <option value="45.04,38.98,3">Краснодар</option>
+          <option value="54.19,37.62,3">Тула</option>
+          <option value="57.62,39.89,3">Ярославль</option>
+          <option value="51.66,39.19,3">Воронеж</option>
+          <option value="48.71,44.51,3">Волгоград</option>
+          <option value="54.98,73.37,6">Омск</option>
+          <option value="56.49,84.97,7">Томск</option>
+          <option value="53.35,83.75,7">Барнаул</option>
+          <option value="67.63,33.68,3">Мурманск</option>
+          <option value="64.54,40.54,3">Архангельск</option>
+        </optgroup>
+        <optgroup label="🇰🇿 Казахстан">
+          <option value="51.18,71.45,6">Астана</option>
+          <option value="43.26,76.95,6">Алматы</option>
+          <option value="42.34,69.59,5">Шымкент</option>
+        </optgroup>
+        <optgroup label="🇧🇾 Беларусь">
+          <option value="53.90,27.57,3">Минск</option>
+          <option value="52.09,23.68,3">Брест</option>
+          <option value="52.43,30.99,3">Гомель</option>
+        </optgroup>
+        <optgroup label="🇺🇿 Узбекистан">
+          <option value="41.30,69.24,5">Ташкент</option>
+          <option value="39.65,66.96,5">Самарканд</option>
+        </optgroup>
+        <optgroup label="🇦🇿 Азербайджан">
+          <option value="40.41,49.87,4">Баку</option>
+        </optgroup>
+        <optgroup label="🇬🇪 Грузия">
+          <option value="41.69,44.83,4">Тбилиси</option>
+          <option value="41.64,41.64,4">Батуми</option>
+        </optgroup>
+        <optgroup label="🇦🇲 Армения">
+          <option value="40.18,44.51,4">Ереван</option>
+        </optgroup>
+        <optgroup label="🇲🇩 Молдова">
+          <option value="47.00,28.85,2">Кишинёв</option>
+          <option value="46.84,29.63,2">Тирасполь</option>
+        </optgroup>
+        <optgroup label="🇰🇬 Кыргызстан">
+          <option value="42.87,74.59,6">Бишкек</option>
+        </optgroup>
+        <optgroup label="🇹🇯 Таджикистан">
+          <option value="38.56,68.77,5">Душанбе</option>
+        </optgroup>
+        <optgroup label="🇹🇲 Туркменистан">
+          <option value="37.95,58.38,5">Ашхабад</option>
+        </optgroup>
+      </select>
+    </div>
+    <button class="btn" id="calcBtn" onclick="calculate()">✦ Построить карту</button>
+  </div>
+
+  <div class="result" id="result">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('map',this)">🗺 Карта</button>
+      <button class="tab" onclick="switchTab('planets',this)">🪐 Планеты</button>
+      <button class="tab" onclick="switchTab('top',this)">🏆 Топ-10</button>
+      <button class="tab" onclick="switchTab('ai',this)">🔮 Анализ</button>
+    </div>
+    <div class="tab-content active" id="tab-map">
+      <div class="map-wrap">
+        <canvas id="astroMap"></canvas>
+        <div class="map-legend" id="mapLegend"></div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-planets">
+      <p class="section-title">✦ Планетарные линии ✦</p>
+      <div id="planetList"></div>
+    </div>
+    <div class="tab-content" id="tab-top">
+      <p class="section-title">✦ Лучшие города для тебя ✦</p>
+      <div class="top-list" id="topList"></div>
+    </div>
+    <div class="tab-content" id="tab-ai">
+      <p class="section-title">✦ Глубокий анализ ✦</p>
+      <div id="aiContent">
+        <button class="ai-btn" id="aiBtn" onclick="requestAnalysis()">
+          <div class="ai-btn-inner">
+            <span>🔮</span>
+            <div>
+              <span>Получить персональный анализ</span>
+              <span class="ai-sub">AI-астролог разберёт твою карту</span>
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetForm()">← Новый расчёт</button>
+    <p class="disclaimer">Астрокартография — инструмент самопознания. Результаты носят рекомендательный характер.</p>
+  </div>
+</div>
+
+<script>
+try{if(window.Telegram&&window.Telegram.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();}}catch(e){}
+
+var hourSel=document.getElementById('birthHour');
+var minSel=document.getElementById('birthMin');
+for(var h=0;h<24;h++){var o=document.createElement('option');o.value=h;o.textContent=(h<10?'0':'')+h+':00';hourSel.appendChild(o);}
+for(var m=0;m<60;m+=5){var o=document.createElement('option');o.value=m;o.textContent=(m<10?'0':'')+m;minSel.appendChild(o);}
+
+function switchTab(name,btn){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+var currentBirthData={};
+
+var PLANETS=[
+  {name:'Солнце',color:'#fbbf24',desc:'Линия Солнца — места где ты ярко проявляешь себя и реализуешь предназначение.',
+   meanings:{AC:'Ты становишься заметной личностью. Люди видят в тебе лидера.',MC:'Идеальное место для карьеры и публичности.',DC:'Встречаешь значимых партнёров.',IC:'Глубокая связь с местом. Ощущение «это мой дом».'},
+   cities:['Мадрид','Рим','Афины','Лиссабон','Каир','Бангкок','Мельбурн','Найроби']},
+  {name:'Луна',color:'#c4b5fd',desc:'Линия Луны — эмоциональный комфорт и ощущение дома.',
+   meanings:{AC:'Чувствуешь себя принятым. Местные кажутся своими.',MC:'Карьера в сферах заботы и психологии.',DC:'Глубокие эмоциональные отношения.',IC:'Самое домашнее место. Покой и укоренённость.'},
+   cities:['Алматы','Тбилиси','Минск','Ереван','Бишкек','Душанбе','Ташкент','Баку']},
+  {name:'Венера',color:'#f472b6',desc:'Линия Венеры — любовь, красота и творчество.',
+   meanings:{AC:'Выглядишь привлекательно. Расцветает творчество.',MC:'Успех в творческих сферах.',DC:'Место романтических встреч.',IC:'Уютный дом и наслаждение жизнью.'},
+   cities:['Батуми','Самарканд','Алматы','Краснодар','Ереван','Тбилиси','Казань','Баку']},
+  {name:'Марс',color:'#fb923c',desc:'Линия Марса — действие, энергия и смелые решения.',
+   meanings:{AC:'Полон энергии. Место для стартапов.',MC:'Карьерный взлёт через конкуренцию.',DC:'Интенсивные и страстные отношения.',IC:'Место где отстаиваешь своё пространство.'},
+   cities:['Москва','Екатеринбург','Новосибирск','Минск','Астана','Ташкент','Баку','Уфа']},
+  {name:'Юпитер',color:'#34d399',desc:'Линия Юпитера — удача, рост и изобилие.',
+   meanings:{AC:'Жизнь кажется щедрой. Везёт в знакомствах.',MC:'Лучшее место для карьерного роста.',DC:'Щедрые партнёры. Бизнес приносит плоды.',IC:'Место изобилия. Ощущение «мне здесь везёт».'},
+   cities:['Санкт-Петербург','Казань','Нижний Новгород','Минск','Алматы','Тбилиси','Ереван','Баку']},
+  {name:'Сатурн',color:'#94a3b8',desc:'Линия Сатурна — дисциплина и долгосрочные достижения.',
+   meanings:{AC:'Воспринимаешься серьёзно. Место для долгосрочных планов.',MC:'Медленный но устойчивый карьерный рост.',DC:'Серьёзные партнёры. Отношения прочны.',IC:'Место дисциплины и уединённой работы.'},
+   cities:['Новосибирск','Иркутск','Красноярск','Омск','Екатеринбург','Томск','Астана','Минск']},
+];
+var ZONES=['AC','MC','DC','IC'];
+var TOP_CITIES=[
+  {city:'Санкт-Петербург',country:'Россия 🇷🇺',tags:['Юпитер AC','Венера MC'],colors:['#34d399','#f472b6'],score:94},
+  {city:'Казань',country:'Россия 🇷🇺',tags:['Юпитер DC','Луна AC'],colors:['#34d399','#c4b5fd'],score:91},
+  {city:'Тбилиси',country:'Грузия 🇬🇪',tags:['Венера AC','Луна MC'],colors:['#f472b6','#c4b5fd'],score:89},
+  {city:'Алматы',country:'Казахстан 🇰🇿',tags:['Луна AC','Венера DC'],colors:['#c4b5fd','#f472b6'],score:87},
+  {city:'Батуми',country:'Грузия 🇬🇪',tags:['Венера IC','Юпитер AC'],colors:['#f472b6','#34d399'],score:85},
+  {city:'Краснодар',country:'Россия 🇷🇺',tags:['Солнце AC','Венера IC'],colors:['#fbbf24','#f472b6'],score:83},
+  {city:'Ереван',country:'Армения 🇦🇲',tags:['Луна DC','Юпитер IC'],colors:['#c4b5fd','#34d399'],score:81},
+  {city:'Самарканд',country:'Узбекистан 🇺🇿',tags:['Венера AC','Луна IC'],colors:['#f472b6','#c4b5fd'],score:79},
+  {city:'Минск',country:'Беларусь 🇧🇾',tags:['Марс AC','Юпитер DC'],colors:['#fb923c','#34d399'],score:77},
+  {city:'Екатеринбург',country:'Россия 🇷🇺',tags:['Марс MC','Солнце AC'],colors:['#fb923c','#fbbf24'],score:75},
+];
+
+function toRad(d){return d*Math.PI/180;}
+function julianDay(y,m,d,h){if(m<=2){y--;m+=12;}var A=Math.floor(y/100),B=2-A+Math.floor(A/4);return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+h/24+B-1524.5;}
+function siderealTime(jd,lng){var T=(jd-2451545)/36525;var g=280.46061837+360.98564736629*(jd-2451545)+0.000387933*T*T;return ((g+lng)%360+360)%360;}
+function planetLon(name,jd){var T=(jd-2451545)/36525;var base={'Солнце':280.466+36000.770*T,'Луна':218.316+481267.881*T,'Венера':181.979+58517.816*T,'Марс':355.433+19140.300*T,'Юпитер':34.351+3034.906*T,'Сатурн':50.077+1222.114*T};return ((base[name]%360)+360)%360;}
+function normLng(l){l=l%360;if(l>180)l-=360;if(l<-180)l+=360;return l;}
+
+function calculate(){
+  var dv=document.getElementById('birthDate').value;
+  var hv=document.getElementById('birthHour').value;
+  var mv=document.getElementById('birthMin').value;
+  var cv=document.getElementById('birthCity').value;
+  if(!dv||hv===''||!cv){alert('Заполните все поля');return;}
+  document.getElementById('calcBtn').textContent='⏳ Вычисляем...';
+  var citySelect=document.getElementById('birthCity');
+  var cityName=citySelect.options[citySelect.selectedIndex].text;
+  currentBirthData={date:dv,time:(parseInt(hv)<10?'0':'')+hv+':'+(parseInt(mv)<10?'0':'')+mv,city:cityName};
+  var parts=dv.split('-');
+  var y=parseInt(parts[0]),m=parseInt(parts[1]),d=parseInt(parts[2]);
+  var cp=cv.split(',');
+  var lat=parseFloat(cp[0]),lng=parseFloat(cp[1]),tz=parseFloat(cp[2]);
+  var h=parseInt(hv)+parseInt(mv||0)/60-tz;
+  var jd=julianDay(y,m,d,h);
+  var lst=siderealTime(jd,lng);
+  var planetData=[];
+  for(var i=0;i<PLANETS.length;i++){
+    var p=PLANETS[i];var lon=planetLon(p.name,jd);var mcLng=normLng(lon-lst+180);
+    planetData.push({name:p.name,color:p.color,desc:p.desc,meanings:p.meanings,cities:p.cities,
+      mcLng:mcLng,acLng:normLng(mcLng+90),zone:ZONES[i%4]});
+  }
+  drawMap(planetData);drawPlanets(planetData);drawTop();
+  document.getElementById('formCard').style.display='none';
+  document.getElementById('result').classList.add('show');
+  document.getElementById('calcBtn').textContent='✦ Построить карту';
+  // Reset AI tab
+  document.getElementById('aiContent').innerHTML='<button class="ai-btn" id="aiBtn" onclick="requestAnalysis()"><div class="ai-btn-inner"><span>🔮</span><div><span>Получить персональный анализ</span><span class="ai-sub">AI-астролог разберёт твою карту</span></div></div></button>';
+}
+
+async function requestAnalysis(){
+  var btn=document.getElementById('aiBtn');
+  if(btn)btn.disabled=true;
+  document.getElementById('aiContent').innerHTML='<div class="analysis-loading"><div class="loading-stars">✦</div><div class="loading-text">AI-астролог изучает твою карту...<br>Это займёт 15-20 секунд</div></div>';
+
+  try{
+    var response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':'sk-ant-api03-fdy40pIDBRqX-twKuLeeOBHwtQz5WVEhCfnp3ZZ9uqxYuis9OlMu3H58WUjurgbk_p8ia7zy0irdP76gT5xAxA-LJYE2gAA','anthropic-version':'2023-06-01'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:1000,
+        messages:[{role:'user',content:'Ты профессиональный астролог-астрокартограф. Данные клиента:\n- Дата рождения: '+currentBirthData.date+'\n- Время рождения: '+currentBirthData.time+'\n- Место рождения: '+currentBirthData.city+'\n\nСоставь глубокий персональный анализ астрокарты для релокации. Структура:\n\n1. Общая характеристика (3-4 предложения)\n2. Топ-3 города для релокации с объяснением (из СНГ и мира)\n3. Карьера и финансы — в каких направлениях искать\n4. Любовь и отношения — где встретить партнёра\n5. Здоровье и энергетика\n6. Главный совет\n\nПиши тепло и лично. 400-500 слов.'}]
+      })
+    });
+    var data=await response.json();
+    var text=data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'Не удалось получить анализ. Попробуй позже.';
+    document.getElementById('aiContent').innerHTML='<div class="analysis-wrap"><div class="analysis-title">🔮 Твой персональный астро-анализ</div><div class="analysis-text">'+text.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div></div>';
+  }catch(e){
+    document.getElementById('aiContent').innerHTML='<div class="analysis-wrap"><div class="analysis-title">Ошибка</div><div class="analysis-text">Не удалось получить анализ. Проверь подключение и попробуй снова.</div></div><button class="ai-btn" onclick="requestAnalysis()"><div class="ai-btn-inner"><span>🔮</span><span>Попробовать снова</span></div></button>';
+  }
+}
+
+function drawMap(pd){
+  var canvas=document.getElementById('astroMap');
+  var W=canvas.parentElement.offsetWidth||340;var H=Math.round(W*0.56);
+  canvas.width=W;canvas.height=H;var ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0d1f3c';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(30,60,100,0.4)';ctx.lineWidth=0.4;
+  for(var x=0;x<=W;x+=W/6){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(var y=0;y<=H;y+=H/3){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  var C=[[[.08,.3],[.14,.26],[.22,.24],[.26,.28],[.27,.42],[.23,.52],[.18,.56],[.13,.54],[.09,.46]],[[.19,.58],[.25,.54],[.28,.6],[.28,.75],[.23,.83],[.18,.82],[.15,.74],[.17,.63]],[[.43,.25],[.50,.22],[.56,.24],[.56,.34],[.50,.38],[.43,.35]],[[.44,.4],[.52,.37],[.58,.42],[.58,.6],[.52,.72],[.45,.7],[.40,.6],[.39,.48]],[[.55,.22],[.68,.2],[.80,.22],[.87,.28],[.85,.42],[.76,.46],[.63,.46],[.55,.38],[.53,.28]],[[.76,.58],[.87,.55],[.91,.62],[.90,.73],[.82,.77],[.74,.72],[.73,.63]]];
+  ctx.fillStyle='#162d52';ctx.strokeStyle='#243d6a';ctx.lineWidth=0.8;
+  for(var ci=0;ci<C.length;ci++){var pts=C[ci];ctx.beginPath();ctx.moveTo(pts[0][0]*W,pts[0][1]*H);for(var pi=1;pi<pts.length;pi++)ctx.lineTo(pts[pi][0]*W,pts[pi][1]*H);ctx.closePath();ctx.fill();ctx.stroke();}
+  ctx.strokeStyle='rgba(100,140,200,0.2)';ctx.lineWidth=0.5;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();ctx.setLineDash([]);
+  for(var i=0;i<pd.length;i++){
+    var p=pd[i];var mcX=((p.mcLng+180)/360)*W;
+    ctx.save();ctx.strokeStyle=p.color;ctx.lineWidth=1.8;ctx.globalAlpha=.85;ctx.beginPath();
+    for(var yy=0;yy<=H;yy+=2){var lr=Math.PI/2-(yy/H)*Math.PI;var x=mcX+Math.sin(lr)*16;if(yy===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);}
+    ctx.stroke();ctx.globalAlpha=.4;ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    var acX=((p.acLng+180)/360)*W;ctx.beginPath();
+    for(var yy=0;yy<=H;yy+=2){var lr=Math.PI/2-(yy/H)*Math.PI;var x=acX+Math.cos(lr)*12;if(yy===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);}
+    ctx.stroke();ctx.restore();
+  }
+  var legend=document.getElementById('mapLegend');legend.innerHTML='';
+  for(var i=0;i<pd.length;i++){var el=document.createElement('div');el.className='leg-item';el.innerHTML='<div class="leg-line" style="background:'+pd[i].color+'"></div><span>'+pd[i].name+'</span>';legend.appendChild(el);}
+}
+
+function drawPlanets(pd){
+  var list=document.getElementById('planetList');list.innerHTML='';
+  for(var i=0;i<pd.length;i++){
+    var p=pd[i];var meaning=p.meanings[p.zone]||p.desc;var citiesHtml='';
+    for(var c=0;c<Math.min(8,p.cities.length);c++){citiesHtml+='<div class="city-chip">'+p.cities[c]+'</div>';}
+    var card=document.createElement('div');card.className='planet-card';
+    card.innerHTML='<div class="planet-header" onclick="toggleCard(this)"><div class="planet-dot" style="background:'+p.color+'"></div><div class="planet-name-text">'+p.name+'</div><div class="zone-badge" style="background:'+p.color+'22;color:'+p.color+';border:1px solid '+p.color+'44">'+p.zone+'</div><span class="chevron">▾</span></div><div class="planet-body"><p class="planet-desc-text">'+p.desc+'</p><div class="meaning-box" style="border-color:'+p.color+'55;color:'+p.color+'cc">'+meaning+'</div><div class="cities-label">🌍 Города на линии '+p.name+'</div><div class="cities-grid">'+citiesHtml+'</div></div>';
+    list.appendChild(card);
+  }
+}
+function toggleCard(header){var body=header.nextElementSibling;var chevron=header.querySelector('.chevron');var isOpen=body.classList.contains('open');body.classList.toggle('open',!isOpen);chevron.style.transform=isOpen?'':'rotate(180deg)';}
+
+function drawTop(){
+  var list=document.getElementById('topList');list.innerHTML='';
+  for(var i=0;i<TOP_CITIES.length;i++){
+    var c=TOP_CITIES[i];var numClass=i===0?'n1':i===1?'n2':i===2?'n3':'';var tagsHtml='';
+    for(var t=0;t<c.tags.length;t++){tagsHtml+='<span class="top-tag" style="background:'+c.colors[t]+'22;color:'+c.colors[t]+'">'+c.tags[t]+'</span>';}
+    var item=document.createElement('div');item.className='top-item';
+    item.innerHTML='<div class="top-num '+numClass+'">'+(i+1)+'</div><div class="top-info"><div class="top-city-name">'+c.city+'</div><div class="top-country-name">'+c.country+'</div><div class="top-tags">'+tagsHtml+'</div></div><div class="top-score">'+c.score+'</div>';
+    list.appendChild(item);
+  }
+}
+function resetForm(){document.getElementById('formCard').style.display='block';document.getElementById('result').classList.remove('show');}
+</script>
+</body>
+</html>
