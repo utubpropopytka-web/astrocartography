@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Астрокартография</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{min-height:100%;font-family:'Outfit',sans-serif;font-weight:300;overflow-x:hidden;color:#fff}
+body{background:url('bg.jpg') center center/cover fixed no-repeat;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:rgba(10,5,12,0.3);}
+.app{min-height:100vh;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:24px 16px 64px}
+.header{text-align:center;margin-bottom:24px;padding-top:14px}
+.app-logo{position:absolute;top:16px;right:18px;font-size:18px;font-weight:700;letter-spacing:2px;color:#fff;text-transform:uppercase;z-index:5;}
+.header h1{font-size:38px;font-weight:200;color:#fff;letter-spacing:-0.5px;line-height:1.18;text-shadow:0 2px 30px rgba(0,0,0,0.5)}
+.header p{font-size:13px;color:rgba(255,255,255,0.65);margin-top:10px;letter-spacing:2px;text-transform:uppercase;font-weight:200}
+.card{background:rgba(255,255,255,0.14);backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);border:1px solid rgba(255,255,255,0.35);border-radius:28px;padding:26px 20px;width:100%;max-width:440px;margin-bottom:14px;box-shadow:0 8px 32px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.4) inset;}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:12px;color:rgba(255,255,255,0.8);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:300}
+.field input,.field select{width:100%;background:rgba(255,255,255,0.12);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:16px;padding:14px 18px;color:#fff;font-family:'Outfit',sans-serif;font-size:17px;font-weight:300;outline:none;transition:all .3s;-webkit-appearance:none;appearance:none;}
+.field input::placeholder{color:rgba(255,255,255,0.4)}
+.field input:focus,.field select:focus{border-color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.2);}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.6)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;padding-right:36px;}
+.field select option,.field select optgroup{background:#3a2a30;color:#fff}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.city-search-wrap{position:relative}
+.city-search-input{width:100%;background:rgba(255,255,255,0.12);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:16px;padding:14px 18px;color:#fff;font-family:'Outfit',sans-serif;font-size:17px;font-weight:300;outline:none;transition:all .3s;}
+.city-search-input:focus{border-color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.2);}
+.city-search-input::placeholder{color:rgba(255,255,255,0.4)}
+.city-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:200;background:rgba(30,20,25,0.8);backdrop-filter:blur(50px) saturate(200%);-webkit-backdrop-filter:blur(50px) saturate(200%);border:1px solid rgba(255,255,255,0.25);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,0.5);max-height:260px;overflow-y:auto;}
+.city-dropdown.open{display:block}
+.city-group-label{font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase;padding:12px 16px 4px;font-weight:300}
+.city-option{padding:12px 16px;font-size:16px;color:rgba(255,255,255,0.9);cursor:pointer;font-weight:300;transition:background .15s;border-radius:14px;margin:0 4px;}
+.city-option:hover{background:rgba(255,255,255,0.15)}
+.city-option mark{background:none;color:#fff;font-weight:500;text-decoration:underline rgba(255,255,255,0.4)}
+.btn{width:100%;padding:17px;border:none;border-radius:100px;background:rgba(20,15,18,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:300;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .3s;border:1px solid rgba(255,255,255,0.15);box-shadow:0 4px 24px rgba(0,0,0,0.4);}
+.btn:active{transform:scale(0.98);opacity:.9}
+.result{display:none;width:100%;max-width:440px}
+.result.show{display:block}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:14px;background:rgba(255,255,255,0.1);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.25);border-radius:22px;padding:5px;}
+.tab{padding:10px 3px;border:none;border-radius:17px;background:transparent;color:rgba(255,255,255,0.55);font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:300;cursor:pointer;transition:all .25s;text-align:center;letter-spacing:.2px;}
+.tab.active{background:rgba(255,255,255,0.22);color:#fff;font-weight:400;box-shadow:0 2px 12px rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.3);}
+.tab[data-tab="profile"].pulse-attn{background:linear-gradient(110deg,#e8b88a,#d4a0a8,#b8a8d4,#8ab89a,#e8b88a);background-size:320% 100%;color:#1a1014;font-weight:600;border:1px solid rgba(255,255,255,0.5);animation:tabShine 3.5s linear infinite,tabPulse 1.7s ease-in-out infinite;}
+@keyframes tabShine{0%{background-position:0% 0}100%{background-position:320% 0}}
+@keyframes tabPulse{0%,100%{box-shadow:0 0 0 0 rgba(232,184,138,0.0)}50%{box-shadow:0 0 18px 5px rgba(232,184,138,0.6)}}
+.btn-glow{background:linear-gradient(110deg,#e8b88a,#d4a0a8,#b8a8d4,#8ab89a,#e8b88a)!important;background-size:320% 100%!important;color:#1a1014!important;animation:tabShine 3.5s linear infinite,btnPulse 1.7s ease-in-out infinite!important;}
+@keyframes btnPulse{0%,100%{box-shadow:0 4px 24px rgba(0,0,0,0.4),0 0 0 0 rgba(232,184,138,0.0)}50%{box-shadow:0 4px 24px rgba(0,0,0,0.4),0 0 22px 6px rgba(212,160,168,0.65)}}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.map-wrap{background:rgba(255,255,255,0.1);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.25);border-radius:22px;overflow:hidden;margin-bottom:14px;}
+#calcCanvas{width:100%;display:block}
+.map-legend{padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,0.75);font-weight:300;letter-spacing:.3px}
+.leg-line{width:18px;height:2px;border-radius:2px}
+.section-title{font-size:13px;font-weight:300;color:rgba(255,255,255,0.7);letter-spacing:2px;margin-bottom:14px;text-align:center;text-transform:uppercase;}
+.planet-card{background:rgba(255,255,255,0.12);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.25);border-radius:22px;margin-bottom:10px;overflow:hidden;}
+.planet-header{display:flex;align-items:center;gap:12px;padding:16px 18px;cursor:pointer;user-select:none}
+.planet-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.planet-name-text{font-size:18px;font-weight:300;color:#fff;flex:1;letter-spacing:.2px}
+.zone-badge{font-size:11px;padding:4px 12px;border-radius:100px;font-weight:300;letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);border:1px solid rgba(255,255,255,0.25)}
+.chevron{font-size:10px;color:rgba(255,255,255,0.4);transition:transform .25s}
+.planet-body{display:none;padding:0 18px 18px;border-top:1px solid rgba(255,255,255,0.1)}
+.planet-body.open{display:block}
+.planet-desc-text{font-size:14px;color:rgba(255,255,255,0.75);line-height:1.7;margin:14px 0 12px;font-weight:300}
+.meaning-box{font-size:14px;line-height:1.7;margin-bottom:14px;padding:12px 14px;background:rgba(255,255,255,0.08);border-radius:14px;border-left:2px solid;color:rgba(255,255,255,0.85);font-weight:300;}
+.cities-label{font-size:11px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:300}
+.cities-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.city-chip{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:12px;padding:8px 10px;font-size:14px;color:rgba(255,255,255,0.85);text-align:center;font-weight:300;}
+.top-list{display:flex;flex-direction:column;gap:8px}
+.top-item{background:rgba(255,255,255,0.12);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.25);border-radius:22px;padding:16px 18px;display:flex;align-items:center;gap:16px;}
+.top-num{font-size:30px;font-weight:200;color:rgba(255,255,255,0.2);width:34px;text-align:center;flex-shrink:0;}
+.n1{color:#fff!important}.n2{color:rgba(255,255,255,0.55)!important}.n3{color:rgba(255,255,255,0.38)!important}
+.top-info{flex:1}
+.top-city-name{font-size:19px;font-weight:400;color:#fff;letter-spacing:.1px}
+.top-country-name{font-size:13px;color:rgba(255,255,255,0.6);margin-top:3px;font-weight:200}
+.top-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.top-tag{font-size:11px;padding:4px 10px;border-radius:100px;font-weight:300;letter-spacing:.3px;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.2)}
+.top-score{font-size:28px;font-weight:200;color:#fff;flex-shrink:0;}
+.top-item.locked{cursor:pointer;border-style:dashed;border-color:rgba(255,255,255,0.18);background:rgba(60,58,62,0.55);opacity:1}
+.top-item.locked .top-city-name{color:rgba(255,255,255,0.55);font-style:italic;font-weight:300;}
+.top-item.locked .top-country-name{color:rgba(255,255,255,0.4)}
+.lock-icon-wrap{display:flex;align-items:center;height:34px;}
+.lock-icon-wrap svg{width:24px;height:24px;flex-shrink:0;}
+.lock-emoji{flex-shrink:0;opacity:.85;display:flex;align-items:center;justify-content:center;}
+.lock-emoji svg{width:22px;height:22px;}
+.tariff-card{background:rgba(255,255,255,0.12);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.25);border-radius:22px;padding:24px 20px;margin-bottom:14px;text-align:center;}
+.tariff-price{font-size:34px;font-weight:200;color:#fff;margin:8px 0 4px}
+.tariff-desc{font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:16px;font-weight:300}
+.ai-btn{width:100%;padding:18px;border-radius:100px;background:rgba(20,15,18,0.8);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:#fff;font-family:'Outfit',sans-serif;font-size:14px;font-weight:300;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .3s;margin-top:4px;border:1px solid rgba(255,255,255,0.2);box-shadow:0 4px 24px rgba(0,0,0,0.35);}
+.ai-btn:hover{background:rgba(20,15,18,0.95)}
+.ai-btn:active{transform:scale(0.98)}
+.ai-btn:disabled{opacity:.4;cursor:not-allowed}
+.ai-btn-inner{display:flex;align-items:center;justify-content:center;gap:14px}
+.ai-sub{font-size:10px;opacity:.55;display:block;margin-top:4px;letter-spacing:1px;font-weight:200}
+.analysis-wrap{background:rgba(255,255,255,0.12);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.25);border-radius:24px;padding:24px;margin-top:14px;}
+.analysis-title{font-size:20px;font-weight:300;color:#fff;margin-bottom:18px;text-align:center;letter-spacing:.3px;}
+.analysis-text{font-size:15px;line-height:1.85;color:rgba(255,255,255,0.88);white-space:pre-wrap;font-weight:300}
+.analysis-loading{text-align:center;padding:40px 0}
+.loading-ring{width:34px;height:34px;margin:0 auto 16px;border:1.5px solid rgba(255,255,255,0.15);border-top-color:rgba(255,255,255,0.85);border-radius:50%;animation:spin 1.2s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:rgba(255,255,255,0.55);font-weight:200;letter-spacing:1px}
+.reset-btn{width:100%;padding:15px;border:1px solid rgba(255,255,255,0.2);border-radius:100px;background:rgba(255,255,255,0.08);backdrop-filter:blur(20px);color:rgba(255,255,255,0.7);font-family:'Outfit',sans-serif;font-size:14px;cursor:pointer;margin-top:12px;transition:all .3s;letter-spacing:1px;font-weight:200}
+.reset-btn:active{background:rgba(255,255,255,0.15);color:#fff}
+.disclaimer{font-size:12px;color:rgba(255,255,255,0.35);text-align:center;margin-top:18px;line-height:1.8;padding:0 12px;font-weight:200;letter-spacing:.5px}
+.calc-overlay{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .35s;background:rgba(16,9,12,0.92);backdrop-filter:blur(40px) saturate(160%);-webkit-backdrop-filter:blur(40px) saturate(160%);}
+.calc-overlay.show{opacity:1;pointer-events:all;}
+.calc-card{width:100%;max-width:380px;background:rgba(255,255,255,0.14);backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);border:1px solid rgba(255,255,255,0.32);border-radius:28px;padding:20px 18px 24px;box-shadow:0 12px 44px rgba(0,0,0,0.45);text-align:center;}
+.q-overlay{position:fixed;inset:0;z-index:600;background:rgba(18,11,14,0.95);backdrop-filter:blur(50px) saturate(160%);-webkit-backdrop-filter:blur(50px) saturate(160%);overflow-y:auto;padding:24px 16px 50px;transform:translateX(100%);transition:transform .35s ease;}
+.q-overlay.show{transform:translateX(0);}
+.q-back{display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,0.75);font-size:14px;margin-bottom:18px;cursor:pointer;font-weight:300;background:none;border:none;padding:0;font-family:'Outfit',sans-serif;}
+.q-heading{font-size:22px;color:#fff;font-weight:500;margin-bottom:4px;line-height:1.3;}
+.q-sub{font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:20px;font-weight:300;}
+.q-item{background:rgba(255,255,255,0.1);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.2);border-radius:18px;padding:15px 18px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;}
+.q-num{font-size:14px;color:rgba(255,255,255,0.4);font-weight:300;flex-shrink:0;min-width:18px;}
+.q-title{font-size:14.5px;color:#fff;font-weight:500;}
+.q-hint{font-size:12.5px;color:rgba(255,255,255,0.5);margin-top:2px;font-weight:300;font-style:italic;}
+.q-item.q-locked{cursor:pointer;border-style:dashed;}
+.q-item.q-locked .q-title{color:rgba(255,255,255,0.55);font-style:italic;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-logo">RELO</div>
+  <div class="header">
+    <h1 id="headerTitle">Найди своё<br>место на Земле</h1>
+    <p id="headerSub">Карта релокации по дате рождения</p>
+  </div>
+  <div class="card" id="formCard">
+    <div class="field"><label>Дата рождения</label><input type="date" id="birthDate" max="2008-01-01"/></div>
+    <div class="row">
+      <div class="field"><label>Час</label><select id="birthHour"><option value="">— час —</option></select></div>
+      <div class="field"><label>Минуты</label><select id="birthMin"><option value="">— мин —</option></select></div>
+    </div>
+    <div class="field">
+      <label>Место рождения</label>
+      <div class="city-search-wrap" id="cityWrap">
+        <input class="city-search-input" id="citySearch" type="text" placeholder="Начните вводить город…" autocomplete="off" readonly onfocus="openCityDropdown()" oninput="filterCities(this.value)"/>
+        <input type="hidden" id="birthCity"/>
+        <div class="city-dropdown" id="cityDropdown"></div>
+      </div>
+    </div>
+    <button class="btn" id="calcBtn" onclick="calculate()">Построить карту</button>
+  </div>
+  <div class="result" id="result">
+    <div class="tabs">
+      <button class="tab active pulse-attn" data-tab="profile" onclick="switchTab('profile',this)">Профиль</button>
+      <button class="tab" data-tab="top" onclick="switchTab('top',this)">ТОП 10</button>
+      <button class="tab" data-tab="move" onclick="switchTab('move',this)">Переезд</button>
+      <button class="tab" data-tab="tariffs" onclick="switchTab('tariffs',this)">Тарифы</button>
+    </div>
+    <div class="tab-content active" id="tab-profile">
+      <p class="section-title">Твой профиль</p>
+      <div class="planet-card" style="padding:18px 18px 6px;">
+        <div class="cities-label">Дата рождения</div>
+        <div class="top-city-name" id="profDate" style="margin-bottom:16px;">—</div>
+        <div class="cities-label">Время рождения</div>
+        <div class="top-city-name" id="profTime" style="margin-bottom:16px;">—</div>
+        <div class="cities-label">Место рождения</div>
+        <div class="top-city-name" id="profCity" style="margin-bottom:18px;">—</div>
+      </div>
+      <button class="btn btn-glow" style="margin-bottom:10px;" onclick="openQuestions()">Ответы на самые важные вопросы по вашей карте</button>
+      <button class="reset-btn" onclick="resetForm()">✎ Изменить данные</button>
+      <button class="reset-btn" style="margin-top:8px;color:#e0a0a0;border-color:rgba(224,160,160,0.35);" onclick="deleteProfile()">✕ Удалить мои данные</button>
+    </div>
+    <div class="tab-content" id="tab-top">
+      <p class="section-title">Лучшие города для тебя</p><div class="top-list" id="topList"></div>
+    </div>
+    <div class="tab-content" id="tab-move">
+      <p class="section-title">Планетарные линии</p><div id="planetList"></div>
+      <p class="section-title" style="margin-top:18px;">Глубокий анализ</p>
+      <div id="aiContent">
+        <button class="ai-btn" id="aiBtn" onclick="requestAnalysis()">
+          <div class="ai-btn-inner"><span>✦</span><div><span>Персональный астро‑анализ</span><span class="ai-sub">AI‑астролог разберёт твою карту</span></div></div>
+        </button>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-tariffs">
+      <p class="section-title">Тарифы</p>
+      <div class="tariff-card">
+        <div class="cities-label">Полный доступ</div>
+        <div class="tariff-price">PRO</div>
+        <div class="tariff-desc">Открывает топ‑1 и топ‑2 город в твоём рейтинге без ограничений.</div>
+        <button class="btn" id="unlockBtn" onclick="unlockPremium()">Разблокировать</button>
+      </div>
+      <p class="disclaimer">Оплата через Telegram пока не подключена — кнопка выше временно открывает доступ для проверки интерфейса.</p>
+      <button class="reset-btn" id="lockBackBtn" style="display:none;margin-top:8px;" onclick="lockPremiumBack()">Скрыть топ‑1‑2 обратно (демо)</button>
+    </div>
+    <button class="reset-btn" onclick="resetForm()">← Новый расчёт</button>
+    <p class="disclaimer">Астрокартография — инструмент самопознания. Результаты носят рекомендательный характер.</p>
+  </div>
+</div>
+<div class="q-overlay" id="questionsOverlay">
+  <button class="q-back" onclick="closeQuestions()">← Назад в профиль</button>
+  <div class="q-heading">Самые важные вопросы<br>по твоей карте</div>
+  <p class="q-sub">Коротко — о чём расскажет твой персональный разбор</p>
+  <div id="questionsList"></div>
+</div>
+<div class="calc-overlay" id="calcOverlay">
+  <div class="calc-card">
+    <div class="map-wrap" style="margin-bottom:16px;"><canvas id="calcCanvas"></canvas><div class="map-legend" id="calcLegend"></div></div>
+    <div class="loading-ring" style="margin:0 auto 14px;"></div>
+    <p class="loading-text" id="calcPhrase">Считываем дату и время рождения…</p>
+  </div>
+</div>
+<script>
+try{if(window.Telegram&&window.Telegram.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();}}catch(e){}
+var hourSel=document.getElementById('birthHour');
+var minSel=document.getElementById('birthMin');
+for(var h=0;h<24;h++){var o=document.createElement('option');o.value=h;o.textContent=(h<10?'0':'')+h+':00';hourSel.appendChild(o);}
+for(var m=0;m<60;m+=5){var o=document.createElement('option');o.value=m;o.textContent=(m<10?'0':'')+m;minSel.appendChild(o);}
+var HEADER_DEFAULT={h1:'Найди своё<br>место на Земле',sub:'Карта релокации по дате рождения'};
+var HEADER_TEXT={top:{h1:'Лучшие города<br>для тебя',sub:''}};
+var LOCK_SVG='<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 1.5a4.75 4.75 0 0 0-4.75 4.75v3.1H6.5A2.25 2.25 0 0 0 4.25 11.6v8.65A2.25 2.25 0 0 0 6.5 22.5h11a2.25 2.25 0 0 0 2.25-2.25V11.6a2.25 2.25 0 0 0-2.25-2.25h-.75v-3.1A4.75 4.75 0 0 0 12 1.5zm0 2A2.75 2.75 0 0 1 14.75 6.25v3.1h-5.5v-3.1A2.75 2.75 0 0 1 12 3.5z" fill="rgba(255,255,255,0.85)"/></svg>';
+function switchTab(name,btn){document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});btn.classList.add('active');document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});document.getElementById('tab-'+name).classList.add('active');
+  var ht=HEADER_TEXT[name]||HEADER_DEFAULT;document.getElementById('headerTitle').innerHTML=ht.h1;var subEl=document.getElementById('headerSub');subEl.textContent=ht.sub;subEl.style.display=ht.sub?'block':'none';
+}
+var currentBirthData={};var currentPlanetData=[];var currentTopCities=[];
+var PLANETS=[
+  {name:'Солнце',color:'#e8b88a',desc:'Линия Солнца — места где ты ярко проявляешь себя и реализуешь предназначение.',
+   meanings:{AC:'Ты становишься заметной личностью. Люди видят в тебе лидера.',MC:'Идеальное место для карьеры и публичности.',DC:'Встречаешь значимых партнёров.',IC:'Глубокая связь с местом. Ощущение «это мой дом».'},
+   cities:['Мадрид','Рим','Афины','Лиссабон','Каир','Бангкок','Мельбурн','Найроби']},
+  {name:'Луна',color:'#b8a8d4',desc:'Линия Луны — эмоциональный комфорт и ощущение дома.',
+   meanings:{AC:'Чувствуешь себя принятым. Местные кажутся своими.',MC:'Карьера в сферах заботы и психологии.',DC:'Глубокие эмоциональные отношения.',IC:'Самое домашнее место. Покой и укоренённость.'},
+   cities:['Алматы','Тбилиси','Минск','Ереван','Бишкек','Душанбе','Ташкент','Баку']},
+  {name:'Венера',color:'#d4a0a8',desc:'Линия Венеры — любовь, красота и творчество.',
+   meanings:{AC:'Выглядишь привлекательно. Расцветает творчество.',MC:'Успех в творческих сферах.',DC:'Место романтических встреч.',IC:'Уютный дом и наслаждение жизнью.'},
+   cities:['Батуми','Самарканд','Алматы','Краснодар','Ереван','Тбилиси','Казань','Баку']},
+  {name:'Марс',color:'#c8907a',desc:'Линия Марса — действие, энергия и смелые решения.',
+   meanings:{AC:'Полон энергии. Место для стартапов.',MC:'Карьерный взлёт через конкуренцию.',DC:'Интенсивные и страстные отношения.',IC:'Место где отстаиваешь своё пространство.'},
+   cities:['Москва','Екатеринбург','Новосибирск','Минск','Астана','Ташкент','Баку','Уфа']},
+  {name:'Юпитер',color:'#8ab89a',desc:'Линия Юпитера — удача, рост и изобилие.',
+   meanings:{AC:'Жизнь кажется щедрой. Везёт в знакомствах.',MC:'Лучшее место для карьерного роста.',DC:'Щедрые партнёры. Бизнес приносит плоды.',IC:'Место изобилия. Ощущение «мне здесь везёт».'},
+   cities:['Санкт-Петербург','Казань','Нижний Новгород','Минск','Алматы','Тбилиси','Ереван','Баку']},
+  {name:'Сатурн',color:'#9090a0',desc:'Линия Сатурна — дисциплина и долгосрочные достижения.',
+   meanings:{AC:'Воспринимаешься серьёзно. Место для долгосрочных планов.',MC:'Медленный но устойчивый карьерный рост.',DC:'Серьёзные партнёры. Отношения прочны.',IC:'Место дисциплины и уединённой работы.'},
+   cities:['Новосибирск','Иркутск','Красноярск','Омск','Екатеринбург','Томск','Астана','Минск']},
+];
+var ZONES=['AC','MC','DC','IC'];
+var TAG_MAP={
+  'Солнце':{AC:'Энергия',MC:'Карьера'},
+  'Луна':{AC:'Комфорт',MC:'Забота'},
+  'Венера':{AC:'Любовь',MC:'Творчество'},
+  'Марс':{AC:'Энергия',MC:'Амбиции'},
+  'Юпитер':{AC:'Свобода',MC:'Деньги'},
+  'Сатурн':{AC:'Стабильность',MC:'Дисциплина'}
+};
+var TAG_COLOR={'Энергия':'#e8b88a','Карьера':'#e8b88a','Комфорт':'#b8a8d4','Забота':'#b8a8d4','Любовь':'#d4a0a8','Творчество':'#d4a0a8','Амбиции':'#c8907a','Свобода':'#8ab89a','Деньги':'#8ab89a','Стабильность':'#9090a0','Дисциплина':'#9090a0'};
+var FILLER_ORDER=['Любовь','Комфорт','Карьера','Забота','Энергия','Свобода','Стабильность','Амбиции','Творчество','Дисциплина'];
+function ensureMoneyTop(c){
+  var idx=c.tags.indexOf('Деньги');
+  if(idx===-1){c.tags.unshift('Деньги');c.colors.unshift(TAG_COLOR['Деньги']);}
+  else if(idx!==0){c.tags.splice(idx,1);var col=c.colors.splice(idx,1)[0];c.tags.unshift('Деньги');c.colors.unshift(col);}
+  var fi=0;
+  while(c.tags.length<3&&fi<FILLER_ORDER.length){
+    var ft=FILLER_ORDER[fi];
+    if(c.tags.indexOf(ft)===-1){c.tags.push(ft);c.colors.push(TAG_COLOR[ft]);}
+    fi++;
+  }
+  c.tags=c.tags.slice(0,3);c.colors=c.colors.slice(0,3);
+}
+var WORLD_CITIES=[
+  {city:'Барселона',country:'Испания 🇪🇸',lat:41.38,lng:2.17},{city:'Лиссабон',country:'Португалия 🇵🇹',lat:38.72,lng:-9.14},
+  {city:'Амстердам',country:'Нидерланды 🇳🇱',lat:52.37,lng:4.90},{city:'Берлин',country:'Германия 🇩🇪',lat:52.52,lng:13.40},
+  {city:'Вена',country:'Австрия 🇦🇹',lat:48.21,lng:16.37},{city:'Прага',country:'Чехия 🇨🇿',lat:50.08,lng:14.44},
+  {city:'Будапешт',country:'Венгрия 🇭🇺',lat:47.50,lng:19.04},{city:'Варшава',country:'Польша 🇵🇱',lat:52.23,lng:21.01},
+  {city:'Рим',country:'Италия 🇮🇹',lat:41.90,lng:12.50},{city:'Милан',country:'Италия 🇮🇹',lat:45.46,lng:9.19},
+  {city:'Париж',country:'Франция 🇫🇷',lat:48.85,lng:2.35},{city:'Лондон',country:'Великобритания 🇬🇧',lat:51.51,lng:-0.13},
+  {city:'Дубай',country:'ОАЭ 🇦🇪',lat:25.20,lng:55.27},{city:'Бангкок',country:'Таиланд 🇹🇭',lat:13.75,lng:100.52},
+  {city:'Бали',country:'Индонезия 🇮🇩',lat:-8.34,lng:115.09},{city:'Токио',country:'Япония 🇯🇵',lat:35.68,lng:139.69},
+  {city:'Нью-Йорк',country:'США 🇺🇸',lat:40.71,lng:-74.01},{city:'Майами',country:'США 🇺🇸',lat:25.77,lng:-80.19},
+  {city:'Лос-Анджелес',country:'США 🇺🇸',lat:34.05,lng:-118.24},{city:'Монреаль',country:'Канада 🇨🇦',lat:45.50,lng:-73.57},
+  {city:'Тбилиси',country:'Грузия 🇬🇪',lat:41.69,lng:44.83},{city:'Санкт-Петербург',country:'Россия 🇷🇺',lat:59.93,lng:30.32},
+  {city:'Мехико',country:'Мексика 🇲🇽',lat:19.43,lng:-99.13},{city:'Буэнос-Айрес',country:'Аргентина 🇦🇷',lat:-34.60,lng:-58.38},
+  {city:'Сингапур',country:'Сингапур 🇸🇬',lat:1.35,lng:103.82},{city:'Сеул',country:'Южная Корея 🇰🇷',lat:37.57,lng:126.98},
+  {city:'Цюрих',country:'Швейцария 🇨🇭',lat:47.38,lng:8.54},{city:'Стокгольм',country:'Швеция 🇸🇪',lat:59.33,lng:18.07},
+];
+function julianDay(y,m,d,h){if(m<=2){y--;m+=12;}var A=Math.floor(y/100),B=2-A+Math.floor(A/4);return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+h/24+B-1524.5;}
+function siderealTime(jd,lng){var T=(jd-2451545)/36525;var g=280.46061837+360.98564736629*(jd-2451545)+0.000387933*T*T;return ((g+lng)%360+360)%360;}
+function planetLon(name,jd){var T=(jd-2451545)/36525;var base={'Солнце':280.466+36000.770*T,'Луна':218.316+481267.881*T,'Венера':181.979+58517.816*T,'Марс':355.433+19140.300*T,'Юпитер':34.351+3034.906*T,'Сатурн':50.077+1222.114*T};return ((base[name]%360)+360)%360;}
+function normLng(l){l=l%360;if(l>180)l-=360;if(l<-180)l+=360;return l;}
+var ALL_CITIES=[
+  {g:'🇷🇺 Россия',cities:[
+    {n:'Москва',v:'55.75,37.62,3'},{n:'Санкт-Петербург',v:'59.93,30.32,3'},{n:'Новосибирск',v:'55.00,82.93,7'},
+    {n:'Екатеринбург',v:'56.83,60.60,5'},{n:'Казань',v:'55.79,49.12,3'},{n:'Нижний Новгород',v:'56.31,43.99,3'},
+    {n:'Челябинск',v:'55.15,61.40,5'},{n:'Самара',v:'53.20,50.15,4'},{n:'Омск',v:'54.98,73.37,6'},
+    {n:'Ростов-на-Дону',v:'47.23,39.72,3'},{n:'Уфа',v:'54.73,55.96,5'},{n:'Красноярск',v:'56.01,92.87,7'},
+    {n:'Воронеж',v:'51.66,39.19,3'},{n:'Пермь',v:'58.01,56.23,5'},{n:'Волгоград',v:'48.71,44.51,3'},
+    {n:'Краснодар',v:'45.04,38.98,3'},{n:'Саратов',v:'51.53,46.03,3'},{n:'Тюмень',v:'57.15,68.00,5'},
+    {n:'Тольятти',v:'53.51,49.42,4'},{n:'Ижевск',v:'56.85,53.20,4'},{n:'Барнаул',v:'53.35,83.75,7'},
+    {n:'Ульяновск',v:'54.32,48.39,4'},{n:'Иркутск',v:'52.29,104.30,8'},{n:'Хабаровск',v:'48.48,135.07,10'},
+    {n:'Ярославль',v:'57.62,39.89,3'},{n:'Владивосток',v:'43.12,131.90,10'},{n:'Махачкала',v:'42.97,47.50,3'},
+    {n:'Томск',v:'56.49,84.97,7'},{n:'Оренбург',v:'51.77,55.10,5'},{n:'Кемерово',v:'55.33,86.08,7'},
+    {n:'Новокузнецк',v:'53.76,87.11,7'},{n:'Рязань',v:'54.63,39.74,3'},{n:'Астрахань',v:'46.35,48.04,3'},
+    {n:'Набережные Челны',v:'55.72,52.39,3'},{n:'Пенза',v:'53.19,45.02,3'},{n:'Липецк',v:'52.61,39.60,3'},
+    {n:'Киров',v:'58.60,49.67,3'},{n:'Чебоксары',v:'56.13,47.25,3'},{n:'Тула',v:'54.19,37.62,3'},
+    {n:'Калининград',v:'54.72,20.51,2'},{n:'Брянск',v:'53.25,34.37,3'},{n:'Иваново',v:'57.00,40.97,3'},
+    {n:'Магнитогорск',v:'53.40,59.05,5'},{n:'Курск',v:'51.73,36.19,3'},{n:'Тверь',v:'56.86,35.90,3'},
+    {n:'Архангельск',v:'64.54,40.54,3'},{n:'Владимир',v:'56.13,40.40,3'},{n:'Сочи',v:'43.60,39.73,3'},
+    {n:'Белгород',v:'50.60,36.59,3'},{n:'Симферополь',v:'44.95,34.10,3'},{n:'Севастополь',v:'44.60,33.53,3'},
+    {n:'Якутск',v:'62.03,129.73,9'},{n:'Мурманск',v:'68.97,33.07,3'},{n:'Сургут',v:'61.25,73.40,5'},
+    {n:'Улан-Удэ',v:'51.83,107.60,8'},{n:'Нижневартовск',v:'60.94,76.55,5'},{n:'Чита',v:'52.03,113.50,8'},
+    {n:'Орёл',v:'52.97,36.07,3'},{n:'Смоленск',v:'54.78,32.05,3'},{n:'Волжский',v:'48.79,44.76,3'},
+    {n:'Череповец',v:'59.13,37.90,3'},{n:'Владикавказ',v:'43.04,44.67,3'},{n:'Нальчик',v:'43.50,43.62,3'},
+    {n:'Сыктывкар',v:'61.67,50.83,3'},{n:'Грозный',v:'43.32,45.70,3'},{n:'Стерлитамак',v:'53.63,55.93,5'},
+    {n:'Балашиха',v:'55.80,37.97,3'},{n:'Петрозаводск',v:'61.78,34.35,3'},{n:'Калуга',v:'54.51,36.26,3'},
+    {n:'Тамбов',v:'52.73,41.43,3'},{n:'Кострома',v:'57.77,40.93,3'},{n:'Новороссийск',v:'44.72,37.77,3'},
+    {n:'Таганрог',v:'47.22,38.90,3'},{n:'Йошкар-Ола',v:'56.63,47.90,3'},{n:'Нижний Тагил',v:'57.91,59.97,5'},
+    {n:'Вологда',v:'59.22,39.88,3'},{n:'Псков',v:'57.81,28.33,3'},{n:'Нижнекамск',v:'55.64,51.83,3'},
+    {n:'Ставрополь',v:'45.04,41.97,3'},{n:'Пятигорск',v:'44.04,43.06,3'},{n:'Кисловодск',v:'43.91,42.73,3'},
+    {n:'Анапа',v:'44.90,37.32,3'},{n:'Геленджик',v:'44.56,38.08,3'},{n:'Великий Новгород',v:'58.52,31.27,3'},
+    {n:'Саранск',v:'54.18,45.18,3'},{n:'Ханты-Мансийск',v:'61.00,69.00,5'},{n:'Благовещенск',v:'50.28,127.54,9'},
+    {n:'Биробиджан',v:'48.80,132.93,10'},{n:'Магадан',v:'59.57,150.79,10'},
+    {n:'Петропавловск-Камчатский',v:'53.05,158.65,12'},{n:'Южно-Сахалинск',v:'46.96,142.74,11'},
+    {n:'Абакан',v:'53.72,91.43,7'},{n:'Горно-Алтайск',v:'51.96,85.96,7'},{n:'Кызыл',v:'51.72,94.44,7'},
+    {n:'Элиста',v:'46.31,44.27,3'},{n:'Майкоп',v:'44.61,40.10,3'},{n:'Черкесск',v:'44.23,42.07,3'},
+    {n:'Комсомольск-на-Амуре',v:'50.55,137.01,10'},{n:'Орск',v:'51.23,58.47,5'},{n:'Шахты',v:'47.71,40.22,3'},
+  ]},
+  {g:'🇰🇿 Казахстан',cities:[
+    {n:'Астана',v:'51.18,71.45,6'},{n:'Алматы',v:'43.26,76.95,6'},{n:'Шымкент',v:'42.34,69.59,5'},
+    {n:'Актобе',v:'50.28,57.21,5'},{n:'Павлодар',v:'52.30,76.95,6'},{n:'Усть-Каменогорск',v:'49.97,82.61,6'},
+    {n:'Атырау',v:'47.10,51.91,5'},{n:'Костанай',v:'53.22,63.62,5'},{n:'Уральск',v:'51.23,51.37,5'},
+  ]},
+  {g:'🇧🇾 Беларусь',cities:[{n:'Минск',v:'53.90,27.57,3'},{n:'Гомель',v:'52.43,30.99,3'},{n:'Могилёв',v:'53.90,30.34,3'},{n:'Витебск',v:'55.19,30.20,3'},{n:'Гродно',v:'53.68,23.83,3'},{n:'Брест',v:'52.09,23.68,3'}]},
+  {g:'🇺🇿 Узбекистан',cities:[{n:'Ташкент',v:'41.30,69.24,5'},{n:'Самарканд',v:'39.65,66.96,5'},{n:'Наманган',v:'41.00,71.67,5'},{n:'Бухара',v:'39.77,64.43,5'},{n:'Фергана',v:'40.39,71.79,5'}]},
+  {g:'🇦🇿 Азербайджан',cities:[{n:'Баку',v:'40.41,49.87,4'},{n:'Гянджа',v:'40.68,46.36,4'}]},
+  {g:'🇬🇪 Грузия',cities:[{n:'Тбилиси',v:'41.69,44.83,4'},{n:'Батуми',v:'41.64,41.64,4'},{n:'Кутаиси',v:'42.27,42.70,4'}]},
+  {g:'🇦🇲 Армения',cities:[{n:'Ереван',v:'40.18,44.51,4'},{n:'Гюмри',v:'40.79,43.85,4'}]},
+  {g:'🇲🇩 Молдова',cities:[{n:'Кишинёв',v:'47.00,28.85,2'},{n:'Тирасполь',v:'46.84,29.63,2'}]},
+  {g:'🇰🇬 Кыргызстан',cities:[{n:'Бишкек',v:'42.87,74.59,6'},{n:'Ош',v:'40.52,72.80,6'}]},
+  {g:'🇹🇯 Таджикистан',cities:[{n:'Душанбе',v:'38.56,68.77,5'},{n:'Худжанд',v:'40.28,69.62,5'}]},
+  {g:'🇹🇲 Туркменистан',cities:[{n:'Ашхабад',v:'37.95,58.38,5'}]},
+  {g:'🇺🇦 Украина',cities:[{n:'Киев',v:'50.45,30.52,2'},{n:'Харьков',v:'49.99,36.23,2'},{n:'Одесса',v:'46.48,30.73,2'},{n:'Днепр',v:'48.46,34.98,2'},{n:'Запорожье',v:'47.84,35.14,2'},{n:'Львов',v:'49.84,24.03,2'}]},
+];
+var selectedCityName='';
+function openCityDropdown(){var input=document.getElementById('citySearch');input.removeAttribute('readonly');input.select();filterCities(input.value);}
+function filterCities(q){
+  var dd=document.getElementById('cityDropdown');q=(q||'').toLowerCase().trim();
+  var html='';var count=0;
+  for(var gi=0;gi<ALL_CITIES.length;gi++){var grp=ALL_CITIES[gi];var groupHtml='';
+    for(var ci=0;ci<grp.cities.length;ci++){var c=grp.cities[ci];
+      if(!q||c.n.toLowerCase().indexOf(q)>=0){
+        var display=q?c.n.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>'):c.n;
+        groupHtml+='<div class="city-option" data-val="'+c.v+'" data-name="'+c.n+'" onclick="selectCity(this)">'+display+'</div>';count++;}}
+    if(groupHtml){html+='<div class="city-group-label">'+grp.g+'</div>'+groupHtml;}}
+  dd.innerHTML=count?html:'<div style="padding:14px;text-align:center;color:var(--text2);font-size:13px">Город не найден</div>';
+  dd.classList.add('open');
+}
+function selectCity(el){document.getElementById('birthCity').value=el.dataset.val;document.getElementById('citySearch').value=el.dataset.name;selectedCityName=el.dataset.name;document.getElementById('cityDropdown').classList.remove('open');document.getElementById('citySearch').setAttribute('readonly','');}
+document.addEventListener('click',function(e){if(!document.getElementById('cityWrap').contains(e.target)){document.getElementById('cityDropdown').classList.remove('open');if(!selectedCityName)document.getElementById('citySearch').setAttribute('readonly','');}});
+var LOADING_MS=5000;
+var calcRafId=null,calcPhraseTimer=null,calcTimeoutId=null;
+function calculate(opts){
+  opts=opts||{};
+  var dv=document.getElementById('birthDate').value;var hv=document.getElementById('birthHour').value;
+  var mv=document.getElementById('birthMin').value;var cv=document.getElementById('birthCity').value;
+  if(!dv||hv===''||!cv){alert('Заполните все поля');return;}
+  document.getElementById('calcBtn').textContent='Вычисляем…';
+  var cityName=selectedCityName||document.getElementById('citySearch').value;
+  currentBirthData={date:dv,time:(parseInt(hv)<10?'0':'')+hv+':'+(parseInt(mv)<10?'0':'')+mv,city:cityName};
+  saveProfile({date:dv,hour:hv,min:mv,cityName:cityName,cityValue:cv});
+  updateProfileView(dv,currentBirthData.time,cityName);
+  var parts=dv.split('-');var y=parseInt(parts[0]),m=parseInt(parts[1]),d=parseInt(parts[2]);
+  var cp=cv.split(',');var lat=parseFloat(cp[0]),lng=parseFloat(cp[1]),tz=parseFloat(cp[2]);
+  var h=parseInt(hv)+parseInt(mv||0)/60-tz;var jd=julianDay(y,m,d,h);var lst=siderealTime(jd,lng);
+  currentPlanetData=[];
+  for(var i=0;i<PLANETS.length;i++){var p=PLANETS[i];var lon=planetLon(p.name,jd);var mcLng=normLng(lon-lst+180);
+    currentPlanetData.push({name:p.name,color:p.color,desc:p.desc,meanings:p.meanings,cities:p.cities,mcLng:mcLng,acLng:normLng(mcLng+90),zone:ZONES[i%4]});}
+  drawTop();
+  document.getElementById('formCard').style.display='none';
+  if(opts.silent){
+    finishResult('profile');
+  }else{
+    showCalcOverlay();
+    calcTimeoutId=setTimeout(function(){hideCalcOverlay();finishResult('top');},LOADING_MS);
+  }
+}
+function finishResult(landTab){
+  drawPlanets(currentPlanetData);
+  document.getElementById('result').classList.add('show');
+  document.getElementById('calcBtn').textContent='Построить карту';
+  document.getElementById('aiContent').innerHTML='<button class="ai-btn" id="aiBtn" onclick="requestAnalysis()"><div class="ai-btn-inner"><span>✦</span><div><span>Персональный астро‑анализ</span><span class="ai-sub">AI‑астролог разберёт твою карту</span></div></div></button>';
+  goTab(landTab);
+}
+function showCalcOverlay(){
+  var ov=document.getElementById('calcOverlay');ov.classList.add('show');
+  calcStars=null;
+  var phrases=['Считываем дату и время рождения…','Строим планетарные линии…','Ищем лучшие города для тебя…'];
+  var phraseEl=document.getElementById('calcPhrase');var pi=0;phraseEl.textContent=phrases[0];
+  if(calcPhraseTimer)clearInterval(calcPhraseTimer);
+  calcPhraseTimer=setInterval(function(){pi=(pi+1)%phrases.length;phraseEl.textContent=phrases[pi];},Math.round(LOADING_MS/3));
+  var start=Date.now();
+  if(calcRafId)cancelAnimationFrame(calcRafId);
+  function frame(){
+    var t=Date.now()-start;
+    drawMap(currentPlanetData,'calcCanvas','calcLegend',t);
+    if(ov.classList.contains('show'))calcRafId=requestAnimationFrame(frame);
+  }
+  calcRafId=requestAnimationFrame(frame);
+}
+function hideCalcOverlay(){
+  var ov=document.getElementById('calcOverlay');ov.classList.remove('show');
+  if(calcRafId){cancelAnimationFrame(calcRafId);calcRafId=null;}
+  if(calcPhraseTimer){clearInterval(calcPhraseTimer);calcPhraseTimer=null;}
+}
+async function requestAnalysis(){
+  var btn=document.getElementById('aiBtn');if(btn)btn.disabled=true;
+  document.getElementById('aiContent').innerHTML='<div class="analysis-loading"><div class="loading-ring"></div><div class="loading-text">Астролог изучает твою карту…</div></div>';
+  try{
+    var planetsStr=currentPlanetData.map(function(p){return p.name+' ('+p.zone+')';}).join(', ');
+    var topCitiesStr=currentTopCities.slice(0,5).map(function(c,i){return (i+1)+'. '+c.city+', '+c.country.replace(/[🇦-🇿]{2}/gu,'').trim()+' ('+c.tags.join(', ')+')';}).join('\n');
+    var response=await fetch('https://worker-production-8acc.up.railway.app/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:currentBirthData.date,time:currentBirthData.time,city:currentBirthData.city,planets:planetsStr,top_cities:topCitiesStr})});
+    var data=await response.json();var text=data.analysis||'Не удалось получить анализ. Попробуй позже.';
+    document.getElementById('aiContent').innerHTML='<div class="analysis-wrap"><div class="analysis-title">✦ Твой персональный астро‑анализ</div><div class="analysis-text">'+text.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div></div>';
+  }catch(e){
+    document.getElementById('aiContent').innerHTML='<div class="analysis-wrap"><div class="analysis-title">Ошибка</div><div class="analysis-text">Не удалось получить анализ. Проверь подключение и попробуй снова.</div></div><button class="ai-btn" onclick="requestAnalysis()"><div class="ai-btn-inner"><span>✦</span><span>Попробовать снова</span></div></button>';
+  }
+}
+var calcStars=null;
+function drawMap(pd,canvasId,legendId,tMs){
+  canvasId=canvasId||'astroMap';tMs=tMs||0;var dashOffset=tMs/18;
+  var canvas=document.getElementById(canvasId);if(!canvas)return;
+  var W=canvas.parentElement.offsetWidth||340;var H=Math.round(W*0.56);
+  canvas.width=W;canvas.height=H;var ctx=canvas.getContext('2d');
+  var bg=ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'rgba(80,55,60,0.7)');bg.addColorStop(1,'rgba(50,35,40,0.8)');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  var grd=ctx.createRadialGradient(W*0.7,H*0.15,0,W*0.7,H*0.15,W*0.55);
+  grd.addColorStop(0,'rgba(200,130,120,0.18)');grd.addColorStop(1,'transparent');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=0.5;
+  for(var x=0;x<=W;x+=W/6){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(var y=0;y<=H;y+=H/3){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  var C=[[[.08,.3],[.14,.26],[.22,.24],[.26,.28],[.27,.42],[.23,.52],[.18,.56],[.13,.54],[.09,.46]],[[.19,.58],[.25,.54],[.28,.6],[.28,.75],[.23,.83],[.18,.82],[.15,.74],[.17,.63]],[[.43,.25],[.50,.22],[.56,.24],[.56,.34],[.50,.38],[.43,.35]],[[.44,.4],[.52,.37],[.58,.42],[.58,.6],[.52,.72],[.45,.7],[.40,.6],[.39,.48]],[[.55,.22],[.68,.2],[.80,.22],[.87,.28],[.85,.42],[.76,.46],[.63,.46],[.55,.38],[.53,.28]],[[.76,.58],[.87,.55],[.91,.62],[.90,.73],[.82,.77],[.74,.72],[.73,.63]]];
+  ctx.fillStyle='rgba(255,255,255,0.12)';ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=0.6;
+  for(var ci=0;ci<C.length;ci++){var pts=C[ci];ctx.beginPath();ctx.moveTo(pts[0][0]*W,pts[0][1]*H);for(var pi=1;pi<pts.length;pi++)ctx.lineTo(pts[pi][0]*W,pts[pi][1]*H);ctx.closePath();ctx.fill();ctx.stroke();}
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=0.5;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();ctx.setLineDash([]);
+  if(canvasId==='calcCanvas'){
+    if(!calcStars){
+      calcStars=[];
+      for(var s=0;s<46;s++){calcStars.push({x:Math.random(),y:Math.random(),phase:Math.random()*6.28,speed:0.4+Math.random()*0.8,r:0.6+Math.random()*1.4});}
+    }
+    for(var s=0;s<calcStars.length;s++){
+      var st=calcStars[s];
+      var sy=(st.y*H+(tMs/9000)*H*st.speed)%H;
+      var op=0.25+0.65*Math.abs(Math.sin(tMs/650+st.phase));
+      ctx.beginPath();ctx.fillStyle='rgba(255,255,255,'+op.toFixed(2)+')';
+      ctx.arc(st.x*W,sy,st.r,0,Math.PI*2);ctx.fill();
+    }
+  }
+  for(var i=0;i<pd.length;i++){
+    var p=pd[i];var mcX=((p.mcLng+180)/360)*W;
+    ctx.save();ctx.strokeStyle=p.color;ctx.lineWidth=1.6;ctx.globalAlpha=.55+Math.sin(dashOffset/14+i)*.2;ctx.beginPath();
+    for(var yy=0;yy<=H;yy+=2){var lr=Math.PI/2-(yy/H)*Math.PI;var x=mcX+Math.sin(lr)*16;if(yy===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);}
+    ctx.stroke();ctx.globalAlpha=.3;ctx.lineWidth=1;ctx.setLineDash([4,3]);ctx.lineDashOffset=-dashOffset;
+    var acX=((p.acLng+180)/360)*W;ctx.beginPath();
+    for(var yy=0;yy<=H;yy+=2){var lr=Math.PI/2-(yy/H)*Math.PI;var x=acX+Math.cos(lr)*12;if(yy===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);}
+    ctx.stroke();ctx.restore();
+    if(canvasId==='calcCanvas'){
+      var markerY=H*(0.12+0.74*((Math.sin(tMs/1400+i*1.3)+1)/2));
+      var mlr=Math.PI/2-(markerY/H)*Math.PI;var mx=mcX+Math.sin(mlr)*16;
+      var blink=0.55+0.45*Math.sin(tMs/280+i*2);
+      ctx.save();ctx.globalAlpha=blink;ctx.shadowColor=p.color;ctx.shadowBlur=10;ctx.fillStyle=p.color;
+      ctx.beginPath();ctx.arc(mx,markerY,3.2,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+  }
+  if(legendId){
+    var legend=document.getElementById(legendId);
+    if(legend){legend.innerHTML='';for(var i=0;i<pd.length;i++){var el=document.createElement('div');el.className='leg-item';el.innerHTML='<div class="leg-line" style="background:'+pd[i].color+'"></div><span>'+pd[i].name+'</span>';legend.appendChild(el);}}
+  }
+}
+function drawPlanets(pd){
+  var list=document.getElementById('planetList');list.innerHTML='';
+  for(var i=0;i<pd.length;i++){
+    var p=pd[i];var meaning=p.meanings[p.zone]||p.desc;var citiesHtml='';
+    for(var c=0;c<Math.min(8,p.cities.length);c++){citiesHtml+='<div class="city-chip">'+p.cities[c]+'</div>';}
+    var card=document.createElement('div');card.className='planet-card';
+    card.innerHTML='<div class="planet-header" onclick="toggleCard(this)"><div class="planet-dot" style="background:'+p.color+'"></div><div class="planet-name-text">'+p.name+'</div><div class="zone-badge" style="background:'+p.color+'15;color:'+p.color+';border:1px solid '+p.color+'30">'+p.zone+'</div><span class="chevron">▾</span></div><div class="planet-body"><p class="planet-desc-text">'+p.desc+'</p><div class="meaning-box" style="border-color:'+p.color+'40;">'+meaning+'</div><div class="cities-label">Города на линии '+p.name+'</div><div class="cities-grid">'+citiesHtml+'</div></div>';
+    list.appendChild(card);
+  }
+}
+function toggleCard(header){var body=header.nextElementSibling;var chevron=header.querySelector('.chevron');var isOpen=body.classList.contains('open');body.classList.toggle('open',!isOpen);chevron.style.transform=isOpen?'':'rotate(180deg)';}
+var PRIORITY_TAGS={'Деньги':1,'Карьера':1,'Забота':1};
+function drawTop(){
+  var scored=[];
+  for(var i=0;i<WORLD_CITIES.length;i++){
+    var c=WORLD_CITIES[i];var score=60;var seen={};var priTags=[],priColors=[],normTags=[],normColors=[];
+    for(var p=0;p<currentPlanetData.length;p++){var pd=currentPlanetData[p];
+      var mcLngDiff=Math.abs(normLng(c.lng-pd.mcLng));var acLngDiff=Math.abs(normLng(c.lng-pd.acLng));
+      if(mcLngDiff<15){var tg=TAG_MAP[pd.name].MC;var bonus=Math.round((15-mcLngDiff)*2);
+        if(PRIORITY_TAGS[tg]){bonus=bonus*2+18;if(!seen[tg]){seen[tg]=1;priTags.push(tg);priColors.push(pd.color);}}
+        else if(!seen[tg]){seen[tg]=1;normTags.push(tg);normColors.push(pd.color);}
+        score+=bonus;}
+      if(acLngDiff<15){score+=Math.round((15-acLngDiff)*2);var tg2=TAG_MAP[pd.name].AC;if(!seen[tg2]){seen[tg2]=1;normTags.push(tg2);normColors.push(pd.color);}}}
+    score+=Math.floor(Math.sin(c.lat*0.3+c.lng*0.17)*8+8);
+    var bestTags=priTags.concat(normTags).slice(0,3);var bestColors=priColors.concat(normColors).slice(0,3);
+    scored.push({city:c.city,country:c.country,tags:bestTags,colors:bestColors,sortScore:score,score:Math.min(99,score)});}
+  scored.sort(function(a,b){return b.sortScore-a.sortScore;});var top10=scored.slice(0,10);currentTopCities=top10;
+  for(var li=0;li<Math.min(2,top10.length);li++){ensureMoneyTop(top10[li]);}
+  if(top10.length){
+    var maxS=top10[0].sortScore;var prevDisp=100;
+    for(var ni=0;ni<top10.length;ni++){
+      var disp=99-Math.round((maxS-top10[ni].sortScore)/3);
+      if(disp>99)disp=99;if(disp<55)disp=55;
+      if(disp>=prevDisp)disp=prevDisp-1;
+      if(disp<55)disp=55;
+      top10[ni].score=disp;prevDisp=disp;
+    }
+  }
+  var list=document.getElementById('topList');list.innerHTML='';
+  for(var i=0;i<top10.length;i++){
+    var c=top10[i];var numClass=i===0?'n1':i===1?'n2':i===2?'n3':'';var tagsHtml='';
+    if(c.tags.length===0){c.tags=['Общая энергия'];c.colors=['#9090a0'];}
+    for(var t=0;t<c.tags.length;t++){tagsHtml+='<span class="top-tag" style="background:'+c.colors[t]+'15;color:'+c.colors[t]+';border:1px solid '+c.colors[t]+'30">'+c.tags[t]+'</span>';}
+    var item=document.createElement('div');
+    if(i<2&&!isPremium()){
+      item.className='top-item locked';
+      item.innerHTML='<div class="top-num '+numClass+'">'+(i+1)+'</div><div class="top-info"><div class="lock-icon-wrap">'+LOCK_SVG+'</div><div class="top-tags">'+tagsHtml+'</div></div>';
+      item.onclick=function(){goTab('tariffs');};
+    }else{
+      item.className='top-item';
+      item.innerHTML='<div class="top-num '+numClass+'">'+(i+1)+'</div><div class="top-info"><div class="top-city-name">'+c.city+'</div><div class="top-country-name">'+c.country+'</div><div class="top-tags">'+tagsHtml+'</div></div>';
+    }
+    list.appendChild(item);}
+}
+function resetForm(){document.getElementById('formCard').style.display='block';document.getElementById('result').classList.remove('show');document.getElementById('citySearch').value='';document.getElementById('birthCity').value='';selectedCityName='';}
+function goTab(name){var btn=document.querySelector('.tab[data-tab="'+name+'"]');if(btn)switchTab(name,btn);}
+var IMPORTANT_QUESTIONS=[
+  {t:'Денежный код',h:'как вам легче зарабатывать'},
+  {t:'Профиль реализации',h:'какой формат работы вам подходит'},
+  {t:'Сильные стороны',h:'на что вы можете опираться'},
+  {t:'Слепые зоны',h:'что мешает вам самому'},
+  {t:'Стиль отношений',h:'как вы любите и чего ждёте'},
+  {t:'Тип энергии',h:'когда вам лучше жить и работать'},
+  {t:'Личный бренд',h:'какой образ легче продать'},
+  {t:'Подходящий контент',h:'какие темы и форматы заходят лучше'},
+  {t:'Продукт, который легче продать',h:'что вам легче монетизировать'},
+  {t:'Периоды роста',h:'когда лучше запускаться и меняться'},
+  {t:'Кармические повторения',h:'какие ситуации повторяются снова'},
+  {t:'Совместимость с людьми',h:'с кем вам по пути, а с кем нет'},
+  {t:'Риски решений',h:'где вы можете ошибиться'},
+  {t:'Персональная стратегия на год',h:'что сейчас важнее всего'},
+  {t:'Что сейчас делать?',h:'конкретный шаг прямо сейчас'}
+];
+function openQuestions(){
+  var list=document.getElementById('questionsList');list.innerHTML='';
+  for(var i=0;i<IMPORTANT_QUESTIONS.length;i++){
+    var q=IMPORTANT_QUESTIONS[i];var el=document.createElement('div');el.className='q-item';
+    if(i===0&&!isPremium()){
+      el.classList.add('q-locked');
+      el.innerHTML='<div class="q-num">'+(i+1)+'</div><div style="flex:1"><div class="q-title">'+q.t+'</div><div class="q-hint">'+q.h+'</div></div><div class="lock-emoji">'+LOCK_SVG+'</div>';
+      el.onclick=function(){closeQuestions();goTab('tariffs');};
+    }else{
+      el.innerHTML='<div class="q-num">'+(i+1)+'</div><div><div class="q-title">'+q.t+'</div><div class="q-hint">'+q.h+'</div></div>';
+    }
+    list.appendChild(el);
+  }
+  document.getElementById('questionsOverlay').classList.add('show');
+  markQuestionsOpened();
+}
+function closeQuestions(){document.getElementById('questionsOverlay').classList.remove('show');}
+var questionsOpenedFlag=false;
+function loadQuestionsOpened(cb){csGet('astro_questions_opened',function(v){questionsOpenedFlag=(v==='1');if(cb)cb();});}
+function markQuestionsOpened(){if(!questionsOpenedFlag){questionsOpenedFlag=true;csSet('astro_questions_opened','1');}refreshProfilePulse();}
+function refreshProfilePulse(){
+  var tab=document.querySelector('.tab[data-tab="profile"]');if(!tab)return;
+  if(questionsOpenedFlag&&isPremium())tab.classList.remove('pulse-attn');
+  else tab.classList.add('pulse-attn');
+}
+function updateProfileView(dv,time,cityName){
+  var pd=document.getElementById('profDate');var pt=document.getElementById('profTime');var pc=document.getElementById('profCity');
+  if(pd)pd.textContent=formatDateRu(dv);if(pt)pt.textContent=time;if(pc)pc.textContent=cityName;
+}
+function formatDateRu(dv){var p=dv.split('-');return p[2]+'.'+p[1]+'.'+p[0];}
+function csReady(){return !!(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.CloudStorage);}
+function csSet(key,value){
+  if(csReady()){try{Telegram.WebApp.CloudStorage.setItem(key,value,function(){});}catch(e){}}
+  try{localStorage.setItem(key,value);}catch(e){}
+}
+function csGet(key,cb){
+  if(csReady()){
+    try{Telegram.WebApp.CloudStorage.getItem(key,function(err,value){
+      if(!err&&value){cb(value);return;}
+      cb(null);
+    });return;}catch(e){}
+  }
+  try{var v=localStorage.getItem(key);cb(v||null);}catch(e){cb(null);}
+}
+function csRemove(key){
+  if(csReady()){try{Telegram.WebApp.CloudStorage.removeItem(key,function(){});}catch(e){}}
+  try{localStorage.removeItem(key);}catch(e){}
+}
+function saveProfile(data){csSet('astro_profile',JSON.stringify(data));}
+function loadProfile(cb){csGet('astro_profile',function(v){cb(v?JSON.parse(v):null);});}
+function clearProfile(){csRemove('astro_profile');}
+function deleteProfile(){
+  clearProfile();
+  currentBirthData={};currentPlanetData=[];currentTopCities=[];
+  document.getElementById('birthDate').value='';hourSel.value='';minSel.value='';
+  document.getElementById('citySearch').value='';document.getElementById('birthCity').value='';selectedCityName='';
+  document.getElementById('profDate').textContent='—';document.getElementById('profTime').textContent='—';document.getElementById('profCity').textContent='—';
+  resetForm();
+}
+var premiumFlag=false;
+function isPremium(){return premiumFlag;}
+function loadPremium(cb){csGet('astro_premium',function(v){premiumFlag=(v==='1');if(cb)cb();});}
+function unlockPremium(){
+  premiumFlag=true;csSet('astro_premium','1');
+  if(currentTopCities.length)drawTop();
+  var btn=document.getElementById('unlockBtn');if(btn){btn.textContent='Открыто ✓';btn.disabled=true;}
+  var back=document.getElementById('lockBackBtn');if(back)back.style.display='block';
+  refreshProfilePulse();
+}
+function lockPremiumBack(){
+  premiumFlag=false;csSet('astro_premium','0');
+  if(currentTopCities.length)drawTop();
+  var btn=document.getElementById('unlockBtn');if(btn){btn.textContent='Разблокировать';btn.disabled=false;}
+  document.getElementById('lockBackBtn').style.display='none';
+  refreshProfilePulse();
+}
+loadPremium(function(){
+  loadQuestionsOpened(function(){
+    refreshProfilePulse();
+    loadProfile(function(profile){
+      if(!profile)return;
+      try{
+        document.getElementById('birthDate').value=profile.date;
+        hourSel.value=profile.hour;minSel.value=profile.min;
+        document.getElementById('birthCity').value=profile.cityValue;
+        document.getElementById('citySearch').value=profile.cityName;
+        selectedCityName=profile.cityName;
+        calculate({silent:true});
+        if(isPremium()){var b=document.getElementById('unlockBtn');if(b){b.textContent='Открыто ✓';b.disabled=true;}document.getElementById('lockBackBtn').style.display='block';}
+      }catch(e){}
+    });
+  });
+});
+</script>
+</body></html>
